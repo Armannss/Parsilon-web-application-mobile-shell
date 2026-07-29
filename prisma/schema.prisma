@@ -1,0 +1,171 @@
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING_REVIEW
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ShippingMethod {
+  NORMAL
+  EXPRESS
+}
+
+enum WholesaleStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum VerificationTargetType {
+  PHONE
+  EMAIL
+}
+
+model User {
+  id           String    @id @default(cuid())
+  fullName     String
+  phone        String?   @unique
+  email        String?   @unique
+  passwordHash String?
+  role         UserRole  @default(USER)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  orders            Order[]
+  wholesaleRequests WholesaleRequest[]
+}
+
+model Brand {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  logo      String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  products Product[]
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  products Product[]
+
+  @@unique([name])
+}
+
+model Product {
+  id             String    @id @default(cuid())
+  name           String
+  slug           String    @unique
+  code           String    @unique
+  description    String?
+  image          String?
+  price          Int
+  stock          Int       @default(0)
+  isAvailable    Boolean   @default(true)
+  compatibleCars String[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  brandId    String?
+  categoryId String?
+
+  brand      Brand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  orderItems OrderItem[]
+
+  @@index([name])
+  @@index([code])
+  @@index([brandId])
+  @@index([categoryId])
+}
+
+model Order {
+  id             String         @id @default(cuid())
+  orderNumber    String         @unique
+  status         OrderStatus    @default(PENDING_REVIEW)
+  shippingMethod ShippingMethod
+  itemCount      Int
+  subtotal       Int
+  shipping       Int
+  vat            Int            @default(0)
+  total          Int
+  customerName   String
+  customerPhone  String
+  province       String
+  city           String
+  address        String
+  postalCode     String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  userId String?
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  quantity     Int
+  unitPrice    Int
+  totalPrice   Int
+  productName  String
+  productCode  String
+  productSlug  String
+  productImage String?
+  brandName    String?
+  categoryName String?
+  createdAt    DateTime @default(now())
+
+  orderId   String
+  productId String?
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model WholesaleRequest {
+  id          String          @id @default(cuid())
+  fullName    String
+  phone       String
+  companyName String?
+  description String?
+  status      WholesaleStatus @default(NEW)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  userId String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model VerificationCode {
+  id         String                 @id @default(cuid())
+  target     String
+  type       VerificationTargetType
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int                    @default(0)
+  createdAt  DateTime               @default(now())
+
+  @@index([target, type, createdAt])
+}
