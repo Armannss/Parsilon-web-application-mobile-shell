@@ -105,6 +105,18 @@ body {
   }
 }
 
+/* Parsilon packaging look: brushed light grey with fine vertical lines. */
+.brand-lines {
+  background-color: #e4e4e2;
+  background-image:
+    linear-gradient(to bottom, #e4e4e2 0%, rgba(228, 228, 226, 0) 45%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.85) 0 1px,
+      transparent 1px 13px
+    );
+}
+
 /* Cards settle in one after another when a list appears. */
 .card-in {
   animation: card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;

@@ -22,6 +22,8 @@ const config: Config = {
           800: "#123A80",
           900: "#0E2F6D",
         },
+        // The blue of the Parsilon box and banner.
+        pack: { DEFAULT: "#24396E", deep: "#1B2C57", vivid: "#002985" },
         // Parsilon green accent.
         accent: {
           400: "#A3D45F",

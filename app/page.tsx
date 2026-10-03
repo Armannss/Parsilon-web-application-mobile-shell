@@ -14,11 +14,11 @@ export const dynamic = "force-dynamic";
 // One large tile per product line, illustrated with a real catalogue photo
 // found by this keyword. Lines without a photo are listed as text below.
 const PRODUCT_LINES = [
-  { keyword: "دیسک", title: "دیسک ترمز", tagline: "توقف مطمئن، هر بار." },
-  { keyword: "کاسه", title: "کاسه چرخ", tagline: "استوار و بادوام." },
-  { keyword: "سیلندر", title: "سیلندر ترمز", tagline: "دقیق در هر فشار." },
-  { keyword: "بلبرینگ", title: "بلبرینگ چرخ", tagline: "حرکت روان." },
-  { keyword: "پولی", title: "پولی سر میل‌لنگ", tagline: "انتقال قدرت موتور." },
+  { keyword: "دیسک", title: "دیسک ترمز", label: "BRAKE DISC", tagline: "توقف مطمئن، هر بار." },
+  { keyword: "کاسه", title: "کاسه چرخ", label: "BRAKE DRUM", tagline: "استوار و بادوام." },
+  { keyword: "سیلندر", title: "سیلندر ترمز", label: "BRAKE CYLINDER", tagline: "دقیق در هر فشار." },
+  { keyword: "بلبرینگ", title: "بلبرینگ چرخ", label: "WHEEL BEARING", tagline: "حرکت روان." },
+  { keyword: "پولی", title: "پولی سر میل‌لنگ", label: "CRANKSHAFT PULLEY", tagline: "انتقال قدرت موتور." },
 ];
 
 function Chevron() {
@@ -31,7 +31,7 @@ function Chevron() {
 
 function TextLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-0.5 text-[15px] font-medium text-brand-600 active:opacity-60">
+    <Link href={href} className="inline-flex items-center gap-0.5 text-[15px] font-bold text-pack active:opacity-60">
       {children}
       <Chevron />
     </Link>
@@ -72,61 +72,83 @@ export default async function HomePage() {
     <MobileShell>
       <AppHeader />
 
-      <main className="bg-[#F5F5F7] pb-28">
-        {/* Hero */}
-        <section className="bg-[#F5F5F7] px-6 pt-10 text-center">
-          <div className="hero-in">
-            <p className="text-[13px] font-medium text-slate-500">پارسیلون پارت</p>
-            <h1 className="mt-2 text-[34px] font-black leading-[1.35] tracking-tight text-slate-900">
+      <main className="bg-[#F1F1EF] pb-28">
+        {/* Hero: the brand banner, continued by its own blue band */}
+        <section className="bg-pack text-white">
+          <img
+            src="/images/new-header-for-products-page.jpg"
+            alt="قطعات ترمز پارسیلون: دیسک، کاسه چرخ، بلبرینگ و سیلندر"
+            className="hero-image-in block aspect-[16/10] w-full object-cover object-[38%_bottom]"
+          />
+
+          <div className="hero-in px-6 pb-9 pt-6">
+            <p className="text-[11px] font-bold tracking-[0.25em] text-white/60" dir="ltr">
+              PARSILON PARTS
+            </p>
+            <h1 className="mt-2 text-[30px] font-black leading-[1.45]">
               خودروی شما
               <br />
-              برای ما مهم است.
+              برای ما مهم است
             </h1>
-            <p className="mx-auto mt-3 max-w-[16rem] text-[15px] leading-7 text-slate-500">
-              قطعات ترمز، مستقیم از تولیدکننده.
+            <span className="mt-4 block h-[3px] w-14 bg-white/50" />
+            <p className="mt-4 text-sm leading-7 text-white/75">
+              تولیدکننده تخصصی قطعات ترمز خودرو.
             </p>
 
-            <div className="mt-6 flex items-center justify-center gap-5">
-              <Link
-                href="/products"
-                className="flex h-11 items-center rounded-full bg-brand-600 px-6 text-[15px] font-medium text-white transition-transform active:scale-95"
+            {/* A plain GET form: works even before JavaScript loads. */}
+            <form action="/products" method="get" role="search" className="relative mt-6">
+              <label htmlFor="home-search" className="sr-only">
+                جستجوی قطعه
+              </label>
+              <input
+                id="home-search"
+                name="search"
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                placeholder="نام قطعه، کد فنی یا خودرو"
+                className="w-full rounded-xl border-0 bg-white py-3.5 pl-24 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/60"
+              />
+              <button
+                type="submit"
+                className="absolute left-1.5 top-1.5 h-[calc(100%-12px)] rounded-lg bg-pack px-5 text-xs font-black text-white transition-transform active:scale-95"
               >
-                مشاهده محصولات
-              </Link>
-              <TextLink href="/search">جستجو</TextLink>
-            </div>
+                جستجو
+              </button>
+            </form>
           </div>
-
-          <img
-            src="/images/parsilon-hero-board.jpg"
-            alt="دیسک ترمز، کاسه چرخ، بلبرینگ و سیلندر ترمز پارسیلون در کنار بسته‌بندی محصول"
-            className="hero-image-in -mx-6 mt-8 w-[calc(100%+3rem)] max-w-none mix-blend-multiply"
-          />
         </section>
 
-        {/* One generous tile per product line */}
-        <div className="space-y-3 px-3 pt-3">
+        {/* Each product line as its own box: lined grey face, blue label band */}
+        <div className="space-y-4 px-4 pt-6">
+          <h2 className="px-1 text-lg font-black text-slate-900">محصولات پارسیلون</h2>
+
           {photoLines.map((line) => (
             <Reveal key={line.keyword}>
-              <section className="overflow-hidden rounded-[28px] bg-white px-6 pt-10 text-center">
-                <h2 className="text-[28px] font-black tracking-tight text-slate-900">
-                  {line.title}
-                </h2>
-                <p className="mt-1.5 text-[17px] text-slate-500">{line.tagline}</p>
-                <div className="mt-4 flex items-center justify-center gap-5">
-                  <TextLink href={href(line.keyword)}>
-                    {line.count.toLocaleString("fa-IR")} مدل
-                  </TextLink>
-                </div>
-
-                <Link href={href(line.keyword)} tabIndex={-1} aria-hidden="true" className="mt-4 block">
+              <Link
+                href={href(line.keyword)}
+                className="block overflow-hidden rounded-2xl shadow-float transition-transform active:scale-[0.985]"
+              >
+                <div className="brand-lines px-6 pb-2 pt-6">
                   <ProductImage
                     src={line.image}
                     alt=""
-                    className="tile-image mx-auto aspect-[4/3] w-full object-contain"
+                    className="tile-image mx-auto aspect-[3/2] w-full object-contain mix-blend-multiply"
                   />
-                </Link>
-              </section>
+                </div>
+                <div className="flex items-end justify-between bg-pack px-5 py-4 text-white">
+                  <div>
+                    <p className="text-lg font-black tracking-wide" dir="ltr">
+                      {line.label}
+                    </p>
+                    <p className="mt-0.5 text-[13px] text-white/75">{line.title}</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-bold text-white/90">
+                    {line.count.toLocaleString("fa-IR")} مدل
+                    <Chevron />
+                  </span>
+                </div>
+              </Link>
             </Reveal>
           ))}
 
@@ -137,16 +159,19 @@ export default async function HomePage() {
                   <Link
                     key={line.keyword}
                     href={href(line.keyword)}
-                    className="flex min-h-36 flex-col justify-between rounded-[28px] bg-white p-5 transition-transform active:scale-[0.98]"
+                    className="overflow-hidden rounded-2xl shadow-card transition-transform active:scale-[0.98]"
                   >
-                    <div>
-                      <h2 className="text-lg font-black leading-7 text-slate-900">{line.title}</h2>
-                      <p className="mt-1 text-[13px] text-slate-500">{line.tagline}</p>
+                    <div className="brand-lines h-16" />
+                    <div className="bg-pack px-4 py-3 text-white">
+                      <p className="text-[11px] font-black tracking-wide" dir="ltr">
+                        {line.label}
+                      </p>
+                      <p className="mt-0.5 text-[13px] font-bold">{line.title}</p>
+                      <p className="mt-2 flex items-center gap-0.5 text-[11px] text-white/75">
+                        {line.count.toLocaleString("fa-IR")} مدل
+                        <Chevron />
+                      </p>
                     </div>
-                    <span className="mt-4 inline-flex items-center gap-0.5 text-[13px] font-medium text-brand-600">
-                      {line.count.toLocaleString("fa-IR")} مدل
-                      <Chevron />
-                    </span>
                   </Link>
                 ))}
               </div>
@@ -157,12 +182,9 @@ export default async function HomePage() {
         {/* Shelf */}
         {shelf.products.length > 0 ? (
           <Reveal>
-            <section className="pt-12">
+            <section className="pt-9">
               <div className="flex items-end justify-between px-6">
-                <h2 className="text-2xl font-black tracking-tight text-slate-900">
-                  منتخب.{" "}
-                  <span className="text-slate-400">آماده ارسال.</span>
-                </h2>
+                <h2 className="text-lg font-black text-slate-900">آماده ارسال</h2>
               </div>
 
               <div className="no-scrollbar mt-5 flex snap-x snap-mandatory scroll-px-6 gap-3 overflow-x-auto px-6 pb-4">
@@ -170,9 +192,9 @@ export default async function HomePage() {
                   <Link
                     key={product.slug}
                     href={`/products/${product.slug}`}
-                    className="flex w-60 shrink-0 snap-start flex-col rounded-[24px] bg-white p-5 transition-transform active:scale-[0.98]"
+                    className="flex w-56 shrink-0 snap-start flex-col rounded-2xl bg-white p-4 shadow-card transition-transform active:scale-[0.98]"
                   >
-                    <p className="text-[11px] font-medium text-accent-600">
+                    <p className="text-[11px] font-bold text-pack">
                       {product.categoryName}
                     </p>
                     <h3 className="mt-1 line-clamp-2 min-h-[3.25rem] text-[17px] font-black leading-[1.55] text-slate-900">
@@ -185,7 +207,7 @@ export default async function HomePage() {
                     />
                     <div className="mt-3 flex items-center justify-between">
                       <span className="text-[13px] text-slate-700">{product.price}</span>
-                      <span className="flex h-8 items-center rounded-full bg-brand-600 px-4 text-[13px] font-medium text-white">
+                      <span className="flex h-8 items-center rounded-lg bg-pack px-4 text-[13px] font-bold text-white">
                         خرید
                       </span>
                     </div>
@@ -204,14 +226,14 @@ export default async function HomePage() {
 
         {/* Brand statement */}
         <Reveal>
-          <section className="mx-3 mt-12 rounded-[28px] bg-[#1D1D1F] px-6 py-12 text-center text-white">
-            <p className="text-[13px] font-medium text-accent-400">بهساز فولاد تهران</p>
+          <section className="mx-4 mt-9 rounded-2xl bg-pack px-6 py-10 text-center text-white">
+            <p className="text-[13px] font-bold text-white/60">بهساز فولاد تهران</p>
             <h2 className="mt-3 text-[30px] font-black leading-[1.4] tracking-tight">
               بیش از ۲۵ سال
               <br />
               تجربه تولید.
             </h2>
-            <p className="mx-auto mt-4 max-w-[17rem] text-[15px] leading-7 text-slate-400">
+            <p className="mx-auto mt-4 max-w-[17rem] text-[15px] leading-7 text-white/70">
               تولیدکننده قطعه برای شرکت‌های خودروساز و مجموعه‌ساز.
             </p>
 
@@ -225,7 +247,7 @@ export default async function HomePage() {
                   <dd className="text-xl font-black" dir={stat.ltr ? "ltr" : undefined}>
                     {stat.value}
                   </dd>
-                  <dt className="mt-1 text-[11px] text-slate-500">{stat.label}</dt>
+                  <dt className="mt-1 text-[11px] text-white/60">{stat.label}</dt>
                 </div>
               ))}
             </dl>
@@ -234,7 +256,7 @@ export default async function HomePage() {
 
         {/* Wholesale */}
         <Reveal>
-          <section className="mx-3 mt-3 rounded-[28px] bg-white px-6 py-10 text-center">
+          <section className="brand-lines mx-4 mt-4 rounded-2xl px-6 py-9 text-center">
             <h2 className="text-2xl font-black tracking-tight text-slate-900">
               خرید عمده.
             </h2>
@@ -248,7 +270,7 @@ export default async function HomePage() {
               >
                 ثبت درخواست
               </Link>
-              <a href={`tel:${SALES_PHONE}`} className="text-[15px] font-medium text-brand-600" dir="ltr">
+              <a href={`tel:${SALES_PHONE}`} className="text-[15px] font-bold text-pack" dir="ltr">
                 {SALES_PHONE_DISPLAY}
               </a>
             </div>
