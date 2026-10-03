@@ -93,8 +93,13 @@ function buildWhere(query: ProductQuery): Prisma.ProductWhereInput {
 }
 
 const ORDER_BY: Record<ProductSort, Prisma.ProductOrderByWithRelationInput[]> = {
-  // Available items first, then newest.
-  default: [{ isAvailable: "desc" }, { createdAt: "desc" }, { id: "asc" }],
+  // Orderable items first, then those with a photo, then newest.
+  default: [
+    { isAvailable: "desc" },
+    { image: { sort: "desc", nulls: "last" } },
+    { createdAt: "desc" },
+    { id: "asc" },
+  ],
   "price-asc": [{ price: "asc" }, { id: "asc" }],
   "price-desc": [{ price: "desc" }, { id: "asc" }],
   "code-asc": [{ code: "asc" }],

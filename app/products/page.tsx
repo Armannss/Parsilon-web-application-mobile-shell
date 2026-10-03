@@ -60,8 +60,8 @@ function Chip({
       aria-current={active ? "true" : undefined}
       className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-bold transition-all active:scale-95 ${
         active
-          ? "border-brand-800 bg-brand-800 text-white shadow-card"
-          : "border-slate-200 bg-white text-slate-700"
+          ? "border-slate-900 bg-slate-900 text-white"
+          : "border-transparent bg-white text-slate-700"
       }`}
     >
       {children}
@@ -121,9 +121,9 @@ export default async function ProductsPage({
     <MobileShell>
       <AppHeader title="محصولات" backHref="/" />
 
-      <main className="min-h-screen bg-[#F4F7FC] pb-28 text-right">
+      <main className="min-h-screen bg-[#F5F5F7] pb-28 text-right">
         {/* Search + filters stay within reach while scrolling */}
-        <div className="sticky top-[76px] z-20 border-b border-slate-200/70 bg-[#F4F7FC] pb-3 pt-3">
+        <div className="sticky top-[76px] z-20 bg-[#F5F5F7] pb-3 pt-3">
           <form action="/products" method="get" role="search" className="relative px-4">
             <label htmlFor="products-search" className="sr-only">
               جستجو در محصولات
@@ -139,7 +139,7 @@ export default async function ProductsPage({
               enterKeyHint="search"
               autoComplete="off"
               placeholder="نام قطعه، کد فنی یا مدل خودرو"
-              className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-4 pr-12 text-sm font-medium text-slate-900 shadow-card placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-2xl border-0 bg-white py-3 pl-4 pr-12 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
             {/* Searching keeps the other filters. */}
             {filters.brand ? <input type="hidden" name="brand" value={filters.brand} /> : null}
@@ -195,7 +195,7 @@ export default async function ProductsPage({
         <section className="px-4 pt-4">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-black text-slate-900">{heading}</h1>
+              <h1 className="truncate text-[26px] font-black tracking-tight text-slate-900">{heading}</h1>
               <p className="mt-0.5 text-xs text-slate-500" aria-live="polite">
                 {result.total.toLocaleString("fa-IR")} قطعه
               </p>
