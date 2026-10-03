@@ -229,13 +229,3 @@ export async function getCartSummary(cartItems: StoredCartItem[]) {
   return summarize(resolveCartItems(cartItems));
 }
 
-export function getRelatedAvailableProducts(limit = 4) {
-  const products = readProductsFromApiCache();
-
-  return products
-    .filter((item) => {
-      const stockValue = parseStockValue(item.stock);
-      return item.isAvailable !== false && stockValue > 0;
-    })
-    .slice(0, limit);
-}
