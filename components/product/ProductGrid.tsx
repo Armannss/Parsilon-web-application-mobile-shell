@@ -56,7 +56,7 @@ export default function ProductGrid({
 
   return (
     <>
-      <ul className="grid grid-cols-2 gap-3">
+      <ul className="grid grid-cols-2 gap-x-3 gap-y-6">
         {products.map((product, index) => (
           <li
             key={product.slug}
