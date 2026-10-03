@@ -3,6 +3,10 @@ import MobileShell from "@/components/layout/MobileShell";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import ProductCard from "@/components/home/ProductCard";
+import { BearingArt, BrakeDiscArt } from "@/components/home/PartArt";
+import ProductImage from "@/components/product/ProductImage";
+import CountUp from "@/components/ui/CountUp";
+import Reveal from "@/components/ui/Reveal";
 import { resolveBrandLogo } from "@/lib/brands";
 import { prisma } from "@/lib/prisma";
 import { listProducts } from "@/lib/products-server";
@@ -36,6 +40,16 @@ const TRUST_POINTS = [
   },
 ];
 
+// What Parsilon makes. Each line is illustrated with a real product photo
+// picked from the catalogue by this keyword.
+const PRODUCT_LINES = [
+  { keyword: "دیسک", title: "دیسک ترمز", text: "جلو، خنک‌شونده و ABS" },
+  { keyword: "کاسه", title: "کاسه چرخ", text: "چرخ عقب سواری و وانت" },
+  { keyword: "بلبرینگ", title: "بلبرینگ چرخ", text: "چرخ جلو و عقب" },
+  { keyword: "سیلندر", title: "سیلندر ترمز", text: "سیلندر چرخ عقب" },
+  { keyword: "پولی", title: "پولی", text: "پولی سر میل‌لنگ" },
+];
+
 function SectionHeader({ title, href }: { title: string; href?: string }) {
   return (
     <div className="flex items-center justify-between px-5">
@@ -50,59 +64,127 @@ function SectionHeader({ title, href }: { title: string; href?: string }) {
 }
 
 export default async function HomePage() {
-  const [brands, categories, featured, productCount] = await Promise.all([
-    prisma.brand.findMany({
-      where: { isActive: true, products: { some: {} } },
-      orderBy: { products: { _count: "desc" } },
-      select: { name: true, slug: true, logo: true },
-    }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { products: { _count: "desc" } },
-      select: {
-        name: true,
-        slug: true,
-        _count: { select: { products: true } },
-      },
-    }),
-    listProducts({ showcase: true, limit: 6 }),
-    prisma.product.count(),
-  ]);
+  const [brands, categories, featured, productCount, lineProducts, carRows] =
+    await Promise.all([
+      prisma.brand.findMany({
+        where: { isActive: true, products: { some: {} } },
+        orderBy: { products: { _count: "desc" } },
+        select: { name: true, slug: true, logo: true },
+      }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { products: { _count: "desc" } },
+        select: {
+          name: true,
+          slug: true,
+          _count: { select: { products: true } },
+        },
+      }),
+      listProducts({ showcase: true, limit: 6 }),
+      prisma.product.count(),
+      Promise.all(
+        PRODUCT_LINES.map(async (line) => {
+          const where = { name: { contains: line.keyword } };
+          const [sample, count] = await Promise.all([
+            prisma.product.findFirst({
+              where,
+              // Prefer one that has a photo.
+              orderBy: [{ image: { sort: "desc", nulls: "last" } }],
+              select: { image: true },
+            }),
+            prisma.product.count({ where }),
+          ]);
+
+          return { ...line, image: sample?.image ?? "", count };
+        }),
+      ),
+      prisma.product.findMany({ select: { compatibleCars: true } }),
+    ]);
+
+  const productLines = lineProducts.filter((line) => line.count > 0);
+  const cars = [...new Set(carRows.flatMap((row) => row.compatibleCars))];
+  const heroProduct = featured.products[0];
+
+  const stats = [
+    { value: productCount, label: "قطعه در کاتالوگ" },
+    { value: cars.length, label: "مدل خودرو" },
+    { value: brands.length, label: "برند خودرو" },
+  ];
 
   return (
     <MobileShell>
       <AppHeader />
 
       <main className="bg-[#F4F7FC] pb-28 text-right">
-        {/* Hero + search */}
+        {/* Hero */}
         <section className="px-4 pt-4">
-          <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-bl from-brand-700 via-brand-800 to-brand-900 p-5 text-white shadow-float">
+          <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-b from-brand-800 via-brand-900 to-[#081B44] px-5 pb-6 pt-6 text-white shadow-float">
+            {/* Glow behind the disc */}
             <div
               aria-hidden="true"
-              className="absolute -left-10 -top-10 h-40 w-40 rounded-full border-[18px] border-white/5"
+              className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-brand-500/30 blur-3xl"
             />
             <div
               aria-hidden="true"
-              className="absolute -bottom-14 left-10 h-36 w-36 rounded-full border-[14px] border-accent-500/15"
+              className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent-500/15 blur-3xl"
             />
 
-            <span className="relative inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold text-accent-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
-              تولیدکننده قطعات ترمز و بلبرینگ
-            </span>
+            <div className="relative animate-fade-up">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-accent-400 backdrop-blur">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-accent-400" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-500" />
+                </span>
+                تولیدکننده قطعات ترمز و بلبرینگ خودرو
+              </span>
 
-            <h1 className="relative mt-3 text-2xl font-black leading-10">
-              قطعه اصلی، مستقیم از
-              <br />
-              پارسیلون پارت
-            </h1>
+              <h1 className="mt-4 text-[28px] font-black leading-[1.55]">
+                ترمزی که
+                <span className="mx-1.5 bg-gradient-to-l from-accent-400 to-accent-500 bg-clip-text text-transparent">
+                  مطمئن
+                </span>
+                می‌ایستد
+              </h1>
 
-            <p className="relative mt-2 text-xs leading-6 text-brand-100">
-              با نام قطعه، کد فنی یا مدل خودرو جستجو کنید.
-            </p>
+              <p className="mt-2 max-w-[15rem] text-[13px] leading-7 text-brand-100">
+                دیسک، کاسه چرخ، سیلندر و بلبرینگ؛ مستقیم از تولیدکننده.
+              </p>
+            </div>
+
+            {/* The parts themselves: a turning disc, a rolling bearing and a real product */}
+            <div className="relative mt-2 h-52" aria-hidden="true">
+              <BrakeDiscArt className="absolute -left-16 top-0 h-56 w-56 animate-spin-slow drop-shadow-[0_18px_30px_rgba(0,0,0,0.45)]" />
+
+              <BearingArt className="absolute left-[9.5rem] top-1 h-16 w-16 animate-float drop-shadow-[0_10px_18px_rgba(0,0,0,0.4)]" />
+
+              {heroProduct ? (
+                <div
+                  className="absolute bottom-1 right-0 w-36 animate-float rounded-2xl border border-white/15 bg-white/95 p-2 shadow-float"
+                  style={{ animationDelay: "-2.5s" }}
+                >
+                  <ProductImage
+                    src={heroProduct.image}
+                    alt=""
+                    eager
+                    className="aspect-[4/3] w-full rounded-xl object-contain"
+                  />
+                  <div className="mt-1.5 truncate text-[10px] font-black text-slate-800">
+                    {heroProduct.name}
+                  </div>
+                  <div className="text-[10px] font-bold text-brand-700">
+                    {heroProduct.price}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             {/* A plain GET form: works even before JavaScript loads. */}
-            <form action="/products" method="get" role="search" className="relative mt-4">
+            <form
+              action="/products"
+              method="get"
+              role="search"
+              className="relative mt-4"
+            >
               <label htmlFor="home-search" className="sr-only">
                 جستجوی قطعه
               </label>
@@ -112,163 +194,299 @@ export default async function HomePage() {
                 type="search"
                 enterKeyHint="search"
                 autoComplete="off"
-                placeholder="مثلاً دیسک ترمز پراید یا 6010101"
-                className="w-full rounded-2xl border-0 bg-white py-3.5 pl-24 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                placeholder="نام قطعه، کد فنی یا خودرو"
+                className="w-full rounded-2xl border-0 bg-white py-3.5 pl-24 pr-4 text-sm font-medium text-slate-900 shadow-float placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
               <button
                 type="submit"
                 className="absolute left-1.5 top-1.5 flex h-[calc(100%-12px)] items-center gap-1.5 rounded-xl bg-accent-500 px-4 text-xs font-black text-brand-900 transition-transform active:scale-95"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.2-5.2m0 0A7.5 7.5 0 1 0 5.2 5.2a7.5 7.5 0 0 0 10.6 10.6Z" />
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m21 21-5.2-5.2m0 0A7.5 7.5 0 1 0 5.2 5.2a7.5 7.5 0 0 0 10.6 10.6Z"
+                  />
                 </svg>
                 جستجو
               </button>
             </form>
+
+            <dl className="relative mt-5 grid grid-cols-3 divide-x divide-x-reverse divide-white/10 text-center">
+              {stats.map((stat) => (
+                <div key={stat.label}>
+                  <dd className="text-xl font-black text-white">
+                    <CountUp value={stat.value} />
+                  </dd>
+                  <dt className="mt-0.5 text-[10px] text-brand-200">
+                    {stat.label}
+                  </dt>
+                </div>
+              ))}
+            </dl>
           </div>
         </section>
 
-        {/* Brands */}
-        {brands.length > 0 ? (
-          <section className="pt-6">
-            <SectionHeader title="خودروی شما" />
-            <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto px-5 pb-1">
-              {brands.map((brand) => (
-                <Link
-                  key={brand.slug}
-                  href={`/products?brand=${encodeURIComponent(brand.name)}`}
-                  className="flex w-[76px] shrink-0 flex-col items-center gap-2 transition-transform active:scale-95"
-                >
-                  <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border border-slate-200 bg-white shadow-card">
-                    <img
-                      src={resolveBrandLogo(brand.logo ?? "")}
-                      alt=""
-                      loading="lazy"
-                      className="h-10 w-10 object-contain"
-                    />
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-700">
-                    {brand.name}
-                  </span>
-                </Link>
-              ))}
+        {/* Compatible cars, scrolling by */}
+        {cars.length > 0 ? (
+          <section className="pt-4" aria-label="خودروهای پشتیبانی‌شده">
+            {/* The track is laid out left-to-right and holds the list twice, so
+                sliding it by half its width loops seamlessly. */}
+            <div className="overflow-hidden" dir="ltr">
+              <ul className="flex w-max animate-marquee gap-2 hover:[animation-play-state:paused]">
+                {[...cars, ...cars].map((car, index) => (
+                  <li key={index} aria-hidden={index >= cars.length}>
+                    <Link
+                      href={`/products?search=${encodeURIComponent(car)}`}
+                      tabIndex={index >= cars.length ? -1 : undefined}
+                      dir="rtl"
+                      className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-card"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
+                      {car}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
+        ) : null}
+
+        {/* What we make */}
+        {productLines.length > 0 ? (
+          <Reveal>
+            <section className="pt-7">
+              <SectionHeader title="آنچه می‌سازیم" href="/products" />
+              <div className="no-scrollbar mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-2">
+                {productLines.map((line) => (
+                  <Link
+                    key={line.keyword}
+                    href={`/products?search=${encodeURIComponent(line.keyword)}`}
+                    className="group relative w-40 shrink-0 snap-start overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-card transition-transform active:scale-[0.98]"
+                  >
+                    <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-brand-50 to-white">
+                      <ProductImage
+                        src={line.image}
+                        alt=""
+                        className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-110"
+                      />
+                      <span className="absolute left-2 top-2 rounded-full bg-brand-900/85 px-2 py-0.5 text-[10px] font-bold text-white">
+                        {line.count.toLocaleString("fa-IR")} مدل
+                      </span>
+                    </div>
+                    <div className="p-3">
+                      <div className="text-sm font-black text-slate-900">
+                        {line.title}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        {line.text}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          </Reveal>
+        ) : null}
+
+        {/* Brands */}
+        {brands.length > 0 ? (
+          <Reveal>
+            <section className="pt-6">
+              <SectionHeader title="خودروی شما" />
+              <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto px-5 pb-1">
+                {brands.map((brand) => (
+                  <Link
+                    key={brand.slug}
+                    href={`/products?brand=${encodeURIComponent(brand.name)}`}
+                    className="flex w-[76px] shrink-0 flex-col items-center gap-2 transition-transform active:scale-95"
+                  >
+                    <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border border-slate-200 bg-white shadow-card">
+                      <img
+                        src={resolveBrandLogo(brand.logo ?? "")}
+                        alt=""
+                        loading="lazy"
+                        className="h-10 w-10 object-contain"
+                      />
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-700">
+                      {brand.name}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          </Reveal>
         ) : null}
 
         {/* Categories */}
         {categories.length > 0 ? (
-          <section className="pt-6">
-            <SectionHeader title="دسته‌بندی قطعات" href="/products" />
-            <div className="mt-3 grid grid-cols-2 gap-3 px-4">
-              {categories.map((category, index) => {
-                const style = CATEGORY_STYLES[index % CATEGORY_STYLES.length];
+          <Reveal>
+            <section className="pt-6">
+              <SectionHeader title="دسته‌بندی قطعات" href="/products" />
+              <div className="mt-3 grid grid-cols-2 gap-3 px-4">
+                {categories.map((category, index) => {
+                  const style = CATEGORY_STYLES[index % CATEGORY_STYLES.length];
 
-                return (
-                  <Link
-                    key={category.slug}
-                    href={`/products?category=${encodeURIComponent(category.slug)}`}
-                    className={`flex items-center gap-3 rounded-3xl border border-slate-200/80 bg-gradient-to-l ${style.tile} p-4 shadow-card transition-transform active:scale-[0.98]`}
-                  >
-                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${style.icon}`}>
-                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-                        <circle cx="12" cy="12" r="9" />
-                        <circle cx="12" cy="12" r="3.5" />
-                        <path strokeLinecap="round" d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21" />
-                      </svg>
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-black text-slate-900">
-                        {category.name}
+                  return (
+                    <Link
+                      key={category.slug}
+                      href={`/products?category=${encodeURIComponent(category.slug)}`}
+                      className={`flex items-center gap-3 rounded-3xl border border-slate-200/80 bg-gradient-to-l ${style.tile} p-4 shadow-card transition-transform active:scale-[0.98]`}
+                    >
+                      <span
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${style.icon}`}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.8}
+                          aria-hidden="true"
+                        >
+                          <circle cx="12" cy="12" r="9" />
+                          <circle cx="12" cy="12" r="3.5" />
+                          <path
+                            strokeLinecap="round"
+                            d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21"
+                          />
+                        </svg>
                       </span>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">
-                        {category._count.products.toLocaleString("fa-IR")} قطعه
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-black text-slate-900">
+                          {category.name}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] text-slate-500">
+                          {category._count.products.toLocaleString("fa-IR")}{" "}
+                          قطعه
+                        </span>
                       </span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          </Reveal>
         ) : null}
 
         {/* Featured products */}
         {featured.products.length > 0 ? (
-          <section className="pt-7">
-            <SectionHeader title="قطعات منتخب" href="/products" />
-            <div className="mt-3 grid grid-cols-2 gap-3 px-4">
-              {featured.products.map((product) => (
-                <ProductCard key={product.slug} product={product} />
-              ))}
-            </div>
-            <div className="px-4">
-              <Link
-                href="/products"
-                className="mt-4 flex h-12 items-center justify-center rounded-2xl border border-brand-200 bg-white text-sm font-bold text-brand-800 transition-transform active:scale-[0.98]"
-              >
-                مشاهده هر {productCount.toLocaleString("fa-IR")} قطعه
-              </Link>
-            </div>
-          </section>
+          <Reveal>
+            <section className="pt-7">
+              <SectionHeader title="قطعات منتخب" href="/products" />
+              <div className="mt-3 grid grid-cols-2 gap-3 px-4">
+                {featured.products.map((product) => (
+                  <ProductCard key={product.slug} product={product} />
+                ))}
+              </div>
+              <div className="px-4">
+                <Link
+                  href="/products"
+                  className="mt-4 flex h-12 items-center justify-center rounded-2xl border border-brand-200 bg-white text-sm font-bold text-brand-800 transition-transform active:scale-[0.98]"
+                >
+                  مشاهده هر {productCount.toLocaleString("fa-IR")} قطعه
+                </Link>
+              </div>
+            </section>
+          </Reveal>
         ) : null}
 
         {/* Trust */}
-        <section className="px-4 pt-7">
-          <div className="grid grid-cols-3 gap-2 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-card">
-            {TRUST_POINTS.map((point) => (
-              <div key={point.title} className="flex flex-col items-center text-center">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d={point.path} />
-                  </svg>
-                </span>
-                <span className="mt-2 text-xs font-black text-slate-900">
-                  {point.title}
-                </span>
-                <span className="mt-1 text-[10px] leading-4 text-slate-500">
-                  {point.text}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 flex items-center gap-3 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-card">
-            <div className="flex shrink-0 gap-2">
-              <img src="/images/IMQ_2.jpg" alt="گواهی IMQ" loading="lazy" className="h-12 w-12 rounded-xl border border-slate-100 object-contain p-1" />
-              <img src="/images/ICnet_2.jpg" alt="گواهی IQNet" loading="lazy" className="h-12 w-12 rounded-xl border border-slate-100 object-contain p-1" />
+        <Reveal>
+          <section className="px-4 pt-7">
+            <div className="grid grid-cols-3 gap-2 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-card">
+              {TRUST_POINTS.map((point) => (
+                <div
+                  key={point.title}
+                  className="flex flex-col items-center text-center"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.6}
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d={point.path}
+                      />
+                    </svg>
+                  </span>
+                  <span className="mt-2 text-xs font-black text-slate-900">
+                    {point.title}
+                  </span>
+                  <span className="mt-1 text-[10px] leading-4 text-slate-500">
+                    {point.text}
+                  </span>
+                </div>
+              ))}
             </div>
-            <p className="text-xs leading-6 text-slate-600">
-              <span className="font-black text-slate-900">
-                دارای گواهی‌های بین‌المللی کیفیت.
-              </span>{" "}
-              تولید مطابق استانداردهای مدیریت کیفیت.
-            </p>
-          </div>
-        </section>
+
+            <div className="mt-3 flex items-center gap-3 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-card">
+              <div className="flex shrink-0 gap-2">
+                <img
+                  src="/images/IMQ_2.jpg"
+                  alt="گواهی IMQ"
+                  loading="lazy"
+                  className="h-12 w-12 rounded-xl border border-slate-100 object-contain p-1"
+                />
+                <img
+                  src="/images/ICnet_2.jpg"
+                  alt="گواهی IQNet"
+                  loading="lazy"
+                  className="h-12 w-12 rounded-xl border border-slate-100 object-contain p-1"
+                />
+              </div>
+              <p className="text-xs leading-6 text-slate-600">
+                <span className="font-black text-slate-900">
+                  دارای گواهی‌های بین‌المللی کیفیت.
+                </span>{" "}
+                تولید مطابق استانداردهای مدیریت کیفیت.
+              </p>
+            </div>
+          </section>
+        </Reveal>
 
         {/* Wholesale */}
-        <section className="px-4 pt-4">
-          <div className="overflow-hidden rounded-3xl bg-slate-900 p-5 text-white">
-            <h2 className="text-base font-black">فروش عمده به همکاران</h2>
-            <p className="mt-1.5 text-xs leading-6 text-slate-300">
-              تعمیرگاه یا فروشگاه دارید؟ قیمت همکاری و ارسال باربری بگیرید.
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Link
-                href="/wholesale"
-                className="flex h-11 items-center justify-center rounded-2xl bg-accent-500 text-xs font-black text-slate-900 transition-transform active:scale-[0.97]"
-              >
-                ثبت درخواست عمده
-              </Link>
-              <a
-                href={`tel:${SALES_PHONE}`}
-                className="flex h-11 items-center justify-center rounded-2xl border border-white/25 text-xs font-bold transition-transform active:scale-[0.97]"
-              >
-                <span dir="ltr">{SALES_PHONE_DISPLAY}</span>
-              </a>
+        <Reveal>
+          <section className="px-4 pt-4">
+            <div className="relative overflow-hidden rounded-3xl bg-slate-900 p-5 text-white">
+              <BrakeDiscArt className="absolute -bottom-14 -left-14 h-40 w-40 animate-spin-slow opacity-20" />
+              <h2 className="relative text-base font-black">
+                فروش عمده به همکاران
+              </h2>
+              <p className="relative mt-1.5 text-xs leading-6 text-slate-300">
+                تعمیرگاه یا فروشگاه دارید؟ قیمت همکاری و ارسال باربری بگیرید.
+              </p>
+              <div className="relative mt-4 grid grid-cols-2 gap-3">
+                <Link
+                  href="/wholesale"
+                  className="flex h-11 items-center justify-center rounded-2xl bg-accent-500 text-xs font-black text-slate-900 transition-transform active:scale-[0.97]"
+                >
+                  ثبت درخواست عمده
+                </Link>
+                <a
+                  href={`tel:${SALES_PHONE}`}
+                  className="flex h-11 items-center justify-center rounded-2xl border border-white/25 text-xs font-bold transition-transform active:scale-[0.97]"
+                >
+                  <span dir="ltr">{SALES_PHONE_DISPLAY}</span>
+                </a>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </Reveal>
       </main>
 
       <BottomNav />

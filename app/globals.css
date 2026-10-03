@@ -63,6 +63,17 @@ body {
   }
 }
 
+.reveal {
+  transition:
+    opacity 0.6s ease-out,
+    transform 0.6s ease-out;
+}
+
+.reveal-hidden {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
 @keyframes skeleton-shimmer {
   from {
     background-position: 200% 0;
