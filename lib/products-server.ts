@@ -19,6 +19,8 @@ export type ProductQuery = {
   category?: string;
   sort?: ProductSort;
   slugs?: string[];
+  /** Only products worth showcasing: orderable and with a real photo. */
+  showcase?: boolean;
   page?: number;
   limit?: number;
 };
@@ -54,9 +56,17 @@ export function formatPublicProduct(product: ProductWithRelations, index = 0) {
 export type PublicProductPayload = ReturnType<typeof formatPublicProduct>;
 
 function buildWhere(query: ProductQuery): Prisma.ProductWhereInput {
-  const { search, brand, category, slugs } = query;
+  const { search, brand, category, slugs, showcase } = query;
 
   return {
+    ...(showcase
+      ? {
+          isAvailable: true,
+          stock: { gt: 0 },
+          price: { gt: 0 },
+          image: { startsWith: "/images/" },
+        }
+      : {}),
     ...(slugs ? { slug: { in: slugs } } : {}),
     // Brand filter accepts either the display name or the slug.
     ...(brand ? { brand: { is: { OR: [{ name: brand }, { slug: brand }] } } } : {}),
