@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
+import { useCart } from "@/context/CartContext";
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -67,6 +68,27 @@ function SearchIcon({ active }: { active: boolean }) {
   );
 }
 
+function CartIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={`h-4 w-4 transition-colors duration-200 ${
+        active ? "text-blue-900" : "text-slate-500"
+      }`}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M3 4h2l2.2 10.2a1.5 1.5 0 001.47 1.18h8.4a1.5 1.5 0 001.46-1.15L20 8H6.2M9.5 20a.75.75 0 100-1.5.75.75 0 000 1.5zm8 0a.75.75 0 100-1.5.75.75 0 000 1.5z"
+      />
+    </svg>
+  );
+}
+
 function ProfileIcon({ active }: { active: boolean }) {
   return (
     <svg
@@ -90,6 +112,7 @@ function ProfileIcon({ active }: { active: boolean }) {
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { cartCount } = useCart();
 
   const hiddenPaths = ["/cart", "/checkout", "/payment", "/order-success", "/login"];
 
@@ -114,13 +137,20 @@ export default function BottomNav() {
         icon: <SearchIcon active={pathname === "/search"} />,
       },
       {
+        href: "/cart",
+        label: "سبد خرید",
+        active: pathname === "/cart",
+        icon: <CartIcon active={pathname === "/cart"} />,
+        badge: cartCount,
+      },
+      {
         href: "/profile",
         label: "حساب",
         active: pathname.startsWith("/profile"),
         icon: <ProfileIcon active={pathname.startsWith("/profile")} />,
       },
     ],
-    [pathname]
+    [pathname, cartCount]
   );
 
   if (hiddenPaths.includes(pathname)) {
@@ -129,19 +159,21 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-2.5 left-1/2 z-30 w-[calc(100%-20px)] max-w-[372px] -translate-x-1/2 rounded-[24px] border p-1.5 backdrop-blur"
+      aria-label="ناوبری اصلی"
+      className="bottom-safe fixed left-1/2 z-30 w-[calc(100%-20px)] max-w-[372px] -translate-x-1/2 rounded-[24px] border p-1.5 backdrop-blur"
       style={{
         borderColor: "#D9E1EC",
         background: "rgba(255,255,255,0.95)",
         boxShadow: "0 8px 24px rgba(15,23,42,0.10)",
       }}
     >
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-5 gap-1">
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className="relative flex min-h-[58px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-2 transition-all duration-200"
+            aria-current={item.active ? "page" : undefined}
+            className="relative flex min-h-[58px] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-2 transition-all duration-200 active:scale-95"
             style={
               item.active
                 ? {
@@ -170,10 +202,16 @@ export default function BottomNav() {
               }
             >
               {item.icon}
+
+              {"badge" in item && item.badge ? (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black leading-none text-white">
+                  {item.badge > 99 ? "۹۹+" : item.badge.toLocaleString("fa-IR")}
+                </span>
+              ) : null}
             </div>
 
             <span
-              className="text-[11px] font-bold transition-colors duration-200"
+              className="whitespace-nowrap text-[10px] font-bold transition-colors duration-200"
               style={{
                 color: item.active ? "#17479E" : "#6B7B95",
               }}

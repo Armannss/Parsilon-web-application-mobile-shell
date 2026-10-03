@@ -8,9 +8,9 @@ import MobileShell from "@/components/layout/MobileShell";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import { getCartItems } from "@/lib/utils";
+import { computeOrderTotals } from "@/lib/pricing";
 import {
   getCartSummary,
-  writeProductsToApiCache,
 } from "@/lib/cart-products";
 import { useOrder } from "@/context/OrderContext";
 
@@ -88,66 +88,43 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const ensureProductsCache = async () => {
-      if (!mounted || typeof window === "undefined") return;
-
-      const existingCache =
-        window.localStorage.getItem("parsilon-products-api-cache") ||
-        window.localStorage.getItem("parsilon-products-cache");
-
-      if (existingCache) return;
-
-      try {
-        const response = await fetch("/api/products", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok || !data?.success || !Array.isArray(data?.products)) {
-          return;
-        }
-
-        writeProductsToApiCache(data.products);
-        setVersion((prev) => prev + 1);
-      } catch (error) {
-        console.error("checkout cache bootstrap error:", error);
-      }
-    };
-
-    void ensureProductsCache();
-  }, [mounted]);
-
   const cartItems = useMemo(() => {
     if (!mounted) return [];
     return getCartItems();
   }, [mounted, version]);
 
-  const summary = useMemo(() => {
-    if (!mounted) return EMPTY_SUMMARY;
-    return getCartSummary(cartItems);
-  }, [mounted, cartItems, version]);
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof getCartSummary>>>(EMPTY_SUMMARY);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    let cancelled = false;
+
+    getCartSummary(cartItems).then((nextSummary) => {
+      if (!cancelled) setSummary(nextSummary);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, cartItems]);
 
   const citiesOfProvince = useMemo(() => {
     if (!checkoutForm.province) return [];
     return IRAN_DATA[checkoutForm.province] || [];
   }, [checkoutForm.province]);
 
-  const shippingCost =
-    summary.validItems.length > 0
-      ? checkoutForm.shippingMethod === "express"
-        ? 300000
-        : 150000
-      : 0;
-
-  const vatAmount =
-    summary.validItems.length > 0
-      ? Math.round((summary.subtotal + shippingCost) * 0.1)
-      : 0;
-
-  const total = summary.subtotal + shippingCost + vatAmount;
+  const {
+    shipping: shippingCost,
+    vat: vatAmount,
+    total,
+  } = computeOrderTotals(
+    summary.validItems.map((item) => ({
+      unitPrice: item.product?.priceValue ?? 0,
+      quantity: item.quantity,
+    })),
+    checkoutForm.shippingMethod === "express" ? "EXPRESS" : "NORMAL"
+  );
 
   const canContinue =
     mounted &&

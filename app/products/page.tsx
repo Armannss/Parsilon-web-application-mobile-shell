@@ -2,7 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import ProductCard from "@/components/home/ProductCard";
+import ProductCard, {
+  ProductCardSkeleton,
+} from "@/components/home/ProductCard";
 import MobileShell from "@/components/layout/MobileShell";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
@@ -547,15 +549,12 @@ function ProductsPageContent() {
             </span>
           </div>
 
-          <div className="mt-4 space-y-4">
+          <div className="mt-4">
             {isLoading ? (
-              <div className="rounded-[32px] border border-slate-100 bg-white p-8 text-center shadow-xs">
-                <div className="text-sm font-black text-slate-800">
-                  در حال دریافت محصولات...
-                </div>
-                <p className="mt-2 text-xs leading-6 text-slate-400">
-                  چند لحظه صبر کنید.
-                </p>
+              <div className="grid grid-cols-2 gap-3" role="status" aria-label="در حال دریافت محصولات">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <ProductCardSkeleton key={index} />
+                ))}
               </div>
             ) : loadError ? (
               <div className="rounded-[32px] border border-red-100 bg-white p-8 text-center shadow-xs">
@@ -567,14 +566,14 @@ function ProductsPageContent() {
                 </p>
               </div>
             ) : visibleProducts.length > 0 ? (
-              visibleProducts.map((product) => (
-                <div
-                  key={product.dbId || product.id || product.slug}
-                  className="will-change-transform transition-transform duration-300 hover:-translate-y-1"
-                >
-                  <ProductCard product={product} />
-                </div>
-              ))
+              <div className="grid grid-cols-2 gap-3">
+                {visibleProducts.map((product) => (
+                  <ProductCard
+                    key={product.dbId || product.id || product.slug}
+                    product={product}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="rounded-[32px] border border-slate-100 bg-white p-8 text-center shadow-xs">
                 <div className="text-sm font-black text-slate-800">

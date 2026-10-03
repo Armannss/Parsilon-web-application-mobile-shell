@@ -146,67 +146,62 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-md active:scale-[0.995]">
-      <Link href={`/products/${product.slug}`} className="block">
-        <div className="overflow-hidden bg-slate-50">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_6px_20px_rgba(14,47,109,0.05)] transition-shadow duration-200 hover:shadow-[0_10px_28px_rgba(14,47,109,0.10)]">
+      <Link
+        href={`/products/${product.slug}`}
+        className="flex flex-1 flex-col focus-visible:outline-none"
+        aria-label={product.name}
+      >
+        <div className="relative aspect-square overflow-hidden bg-slate-50">
           <img
             src={imageSrc}
-            alt={product.name}
+            alt=""
+            loading="lazy"
+            decoding="async"
             onError={() => setImageSrc(getFallbackProductImage())}
-            className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            className={`h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.04] ${
+              isUnavailable ? "opacity-60 grayscale" : ""
+            }`}
           />
+
+          <span
+            className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              isUnavailable
+                ? "bg-slate-900/70 text-white"
+                : "bg-emerald-500/95 text-white"
+            }`}
+          >
+            {stockLabel}
+          </span>
+
+          {brandLogo ? (
+            <img
+              src={brandLogo}
+              alt={product.brand || ""}
+              loading="lazy"
+              className="absolute left-2 top-2 h-7 w-7 rounded-full border border-slate-100 bg-white object-contain p-1 shadow-sm"
+            />
+          ) : null}
         </div>
 
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="line-clamp-2 text-sm font-extrabold text-slate-900 transition-colors duration-200 group-hover:text-blue-900">
-                {product.name}
-              </h3>
-
-              <p className="mt-1 text-xs text-slate-500">
-                کد فنی: {product.code}
-              </p>
-
-              <div className="mt-2 flex flex-wrap gap-2">
-                {product.brand ? (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 transition-colors duration-200 group-hover:bg-slate-50">
-                    {brandLogo ? (
-                      <img
-                        src={brandLogo}
-                        alt={product.brand}
-                        className="h-4 w-4 rounded-full object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                    {product.brand}
-                  </span>
-                ) : null}
-
-                {categoryLabel ? (
-                  <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition-colors duration-200 group-hover:bg-blue-100">
-                    {categoryLabel}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            <span
-              className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold transition-colors duration-200 ${
-                isUnavailable
-                  ? "bg-red-50 text-red-600"
-                  : "bg-emerald-50 text-emerald-700"
-              }`}
-            >
-              {stockLabel}
+        <div className="flex flex-1 flex-col p-3">
+          {categoryLabel ? (
+            <span className="text-[10px] font-bold text-brand-600">
+              {categoryLabel}
             </span>
-          </div>
+          ) : null}
+
+          <h3 className="mt-1 line-clamp-2 min-h-[2.5rem] text-[13px] font-extrabold leading-5 text-slate-900">
+            {product.name}
+          </h3>
+
+          <p className="mt-1 text-[11px] text-slate-400" dir="ltr">
+            {product.code}
+          </p>
 
           <div
-            className={`mt-4 text-sm font-black transition-colors duration-200 ${
-              hasInquiryPrice ? "text-amber-600" : "text-blue-900"
+            className={`mt-auto pt-2 text-[13px] font-black ${
+              hasInquiryPrice ? "text-amber-600" : "text-brand-800"
             }`}
           >
             {product.price}
@@ -214,18 +209,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      <div className="grid grid-cols-2 gap-3 border-t border-slate-100 p-4 pt-0">
-        <Link
-          href={`/products/${product.slug}`}
-          className="rounded-2xl border border-slate-300 px-4 py-3 text-center text-sm font-bold text-slate-700 transition-all duration-200 hover:border-blue-200 hover:bg-blue-50/40 hover:text-blue-900 active:scale-[0.98]"
-        >
-          مشاهده
-        </Link>
-
+      <div className="px-3 pb-3">
         {hasInquiryPrice ? (
           <Link
             href="/wholesale"
-            className="rounded-2xl bg-slate-900 px-4 py-3 text-center text-sm font-bold text-white transition-all duration-200 hover:bg-slate-800 active:scale-[0.98]"
+            className="flex h-11 w-full items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-700 transition-transform active:scale-[0.97]"
           >
             استعلام قیمت
           </Link>
@@ -234,17 +222,48 @@ export default function ProductCard({ product }: ProductCardProps) {
             type="button"
             onClick={handleAddToCart}
             disabled={isUnavailable}
-            className={`rounded-2xl px-4 py-3 text-center text-sm font-bold text-white transition-all duration-200 ${
+            aria-live="polite"
+            className={`flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.97] ${
               isUnavailable
                 ? "cursor-not-allowed bg-slate-300"
                 : added
                   ? "bg-emerald-600"
-                  : "bg-blue-900 hover:bg-blue-800 active:scale-[0.98]"
+                  : "bg-brand-800 hover:bg-brand-900"
             }`}
           >
-            {isUnavailable ? "ناموجود" : added ? "اضافه شد" : "افزودن به سبد"}
+            {isUnavailable ? (
+              "ناموجود"
+            ) : added ? (
+              <>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+                اضافه شد
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+                </svg>
+                افزودن به سبد
+              </>
+            )}
           </button>
         )}
+      </div>
+    </article>
+  );
+}
+
+export function ProductCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white" aria-hidden="true">
+      <div className="skeleton aspect-square" />
+      <div className="space-y-2 p-3">
+        <div className="skeleton h-3 w-1/3 rounded-full" />
+        <div className="skeleton h-4 w-full rounded-full" />
+        <div className="skeleton h-4 w-2/3 rounded-full" />
+        <div className="skeleton mt-3 h-11 w-full rounded-2xl" />
       </div>
     </div>
   );

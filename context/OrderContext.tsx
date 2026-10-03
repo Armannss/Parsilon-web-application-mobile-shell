@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/context/AuthContext";
 import {
   createContext,
   useContext,
@@ -53,14 +54,6 @@ type OrderHistoryItem = {
   total: number;
 };
 
-type FinalizeOrderInput = {
-  items: OrderLineItem[];
-  itemCount: number;
-  subtotal: number;
-  shipping: number;
-  vat?: number;
-  total: number;
-};
 
 type OrderContextType = {
   orderNumber: string | null;
@@ -69,7 +62,6 @@ type OrderContextType = {
   isLoadingOrders: boolean;
   updateCheckoutForm: (data: Partial<CheckoutForm>) => void;
   createOrder: () => string;
-  finalizeOrder: (input: FinalizeOrderInput) => Promise<string>;
   clearOrder: () => void;
   getOrderByNumber: (orderNumber: string) => OrderHistoryItem | undefined;
   updateOrderStatus: (orderNumber: string, status: OrderStatus) => void;
@@ -272,10 +264,17 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const { isAuthenticated } = useAuth();
+
   useEffect(() => {
     if (!isReady) return;
-    refreshOrders();
-  }, [isReady, refreshOrders]);
+
+    if (isAuthenticated) {
+      refreshOrders();
+    } else {
+      setOrderHistory([]);
+    }
+  }, [isReady, isAuthenticated, refreshOrders]);
 
   const value = useMemo<OrderContextType>(
     () => ({
@@ -292,63 +291,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         const tempOrderNumber = generateTemporaryOrderNumber();
         setOrderNumber(tempOrderNumber);
         return tempOrderNumber;
-      },
-
-      finalizeOrder: async ({
-        items,
-        itemCount,
-        subtotal,
-        shipping,
-        vat = 0,
-        total,
-      }: FinalizeOrderInput) => {
-        const response = await fetch("/api/orders", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            shippingMethod:
-              checkoutForm.shippingMethod === "express"
-                ? "EXPRESS"
-                : "NORMAL",
-            itemCount,
-            subtotal,
-            shipping,
-            vat,
-            total,
-            customerName: checkoutForm.fullName,
-            customerPhone: checkoutForm.phone,
-            province: checkoutForm.province,
-            city: checkoutForm.city,
-            address: checkoutForm.address,
-            postalCode: checkoutForm.postalCode,
-            items: items.map((item) => ({
-              productId: item.productId ?? null,
-              name: item.name,
-              code: item.code,
-              slug: item.slug,
-              image: item.image,
-              quantity: item.quantity,
-              unitPrice: Number(String(item.price).replace(/[^\d]/g, "")) || 0,
-              brandName: item.brand || "",
-              categoryName: item.category || "",
-            })),
-          }),
-        });
-
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok || !data?.success || !data?.order?.orderNumber) {
-          throw new Error(data?.message || "ثبت سفارش انجام نشد");
-        }
-
-        const finalOrderNumber = data.order.orderNumber as string;
-        setOrderNumber(finalOrderNumber);
-        await refreshOrders();
-
-        return finalOrderNumber;
       },
 
       clearOrder: () => {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserFromCookie } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/auth";
 
 function formatWholesaleRequest(request: {
   id: string;
@@ -32,17 +32,9 @@ function formatWholesaleRequest(request: {
   };
 }
 
-async function ensureAdmin() {
-  const currentUser = await getCurrentUserFromCookie();
-  if (!currentUser || currentUser.role !== "ADMIN") {
-    return null;
-  }
-  return currentUser;
-}
-
 export async function GET() {
   try {
-    const admin = await ensureAdmin();
+    const admin = await getCurrentAdmin();
 
     if (!admin) {
       return NextResponse.json(

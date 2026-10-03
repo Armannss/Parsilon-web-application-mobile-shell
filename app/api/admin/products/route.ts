@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserFromCookie } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/auth";
 
 const productSchema = z.object({
   name: z.string().min(2, "نام محصول الزامی است"),
@@ -9,8 +9,8 @@ const productSchema = z.object({
   code: z.string().min(2, "کد محصول الزامی است"),
   description: z.string().optional().default(""),
   image: z.string().optional().default(""),
-  price: z.number().min(0, "قیمت نامعتبر است"),
-  stock: z.number().min(0, "موجودی نامعتبر است"),
+  price: z.number().int("قیمت باید عدد صحیح باشد").min(0, "قیمت نامعتبر است").max(2_000_000_000, "قیمت نامعتبر است"),
+  stock: z.number().int("موجودی باید عدد صحیح باشد").min(0, "موجودی نامعتبر است").max(1_000_000, "موجودی نامعتبر است"),
   isAvailable: z.boolean().default(true),
   compatibleCars: z.array(z.string()).optional().default([]),
   brandSlug: z.string().optional().default(""),
@@ -56,9 +56,9 @@ function formatAdminProduct(product: {
 
 export async function GET() {
   try {
-    const currentUser = await getCurrentUserFromCookie();
+    const admin = await getCurrentAdmin();
 
-    if (!currentUser || currentUser.role !== "ADMIN") {
+    if (!admin) {
       return NextResponse.json(
         {
           success: false,
@@ -97,9 +97,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromCookie();
+    const admin = await getCurrentAdmin();
 
-    if (!currentUser || currentUser.role !== "ADMIN") {
+    if (!admin) {
       return NextResponse.json(
         {
           success: false,

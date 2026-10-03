@@ -3,16 +3,82 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
+  --background: #f4f7fc;
   --foreground: #0f172a;
 }
 
 html {
   direction: rtl;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-vazirmatn), sans-serif;
+  font-family: var(--font-vazirmatn), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+/* iOS zooms the page when a focused field is under 16px. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Visible focus for keyboard users only. */
+:focus-visible {
+  outline: 2px solid #17479e;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+  }
+
+  .bottom-safe {
+    bottom: max(0.625rem, env(safe-area-inset-bottom));
+  }
+
+  .skeleton {
+    background: linear-gradient(100deg, #eef2f7 40%, #f8fafc 50%, #eef2f7 60%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

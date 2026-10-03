@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserFromCookie } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/auth";
+import { ApiError, fail, forbidden, handleApiError } from "@/lib/api";
+import { formatOrder } from "@/lib/orders";
 
 const updateStatusSchema = z.object({
   orderNumber: z.string().min(1, "شماره سفارش الزامی است"),
@@ -14,172 +16,94 @@ const updateStatusSchema = z.object({
   ]),
 });
 
-function formatOrder(order: {
-  id: string;
-  orderNumber: string;
-  status: string;
-  shippingMethod: string;
-  itemCount: number;
-  subtotal: number;
-  shipping: number;
-  vat: number;
-  total: number;
-  customerName: string;
-  customerPhone: string;
-  province: string;
-  city: string;
-  address: string;
-  postalCode: string;
-  createdAt: Date;
-  updatedAt: Date;
-  user: { id: string; fullName: string; phone: string } | null;
-  items?: Array<{
-    id: string;
-    quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-    productName: string;
-    productCode: string;
-  }>;
-}) {
-  return {
-    id: order.id,
-    orderNumber: order.orderNumber,
-    status: order.status,
-    shippingMethod: order.shippingMethod,
-    itemCount: order.itemCount,
-    subtotal: order.subtotal,
-    shipping: order.shipping,
-    vat: order.vat,
-    total: order.total,
-    customer: {
-      fullName: order.customerName,
-      phone: order.customerPhone,
-      province: order.province,
-      city: order.city,
-      address: order.address,
-      postalCode: order.postalCode,
-    },
-    user: order.user
-      ? {
-          id: order.user.id,
-          fullName: order.user.fullName,
-          phone: order.user.phone,
-        }
-      : null,
-    createdAt: order.createdAt,
-    updatedAt: order.updatedAt,
-    items:
-      order.items?.map((item) => ({
-        id: item.id,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        name: item.productName,
-        code: item.productCode,
-      })) || [],
-  };
-}
-
-async function ensureAdmin() {
-  const currentUser = await getCurrentUserFromCookie();
-  if (!currentUser || currentUser.role !== "ADMIN") {
-    return null;
-  }
-  return currentUser;
-}
+const orderInclude = {
+  user: { select: { id: true, fullName: true, phone: true } },
+  items: true,
+} as const;
 
 export async function GET() {
   try {
-    const admin = await ensureAdmin();
-
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, message: "دسترسی غیرمجاز" },
-        { status: 403 }
-      );
-    }
+    if (!(await getCurrentAdmin())) return forbidden();
 
     const orders = await prisma.order.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            phone: true,
-          },
-        },
-        items: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      include: orderInclude,
+      orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json({
       success: true,
-      orders: orders.map(formatOrder),
+      orders: orders.map((order) => formatOrder(order)),
     });
   } catch (error) {
-    console.error("GET /api/admin/orders error:", error);
-
-    return NextResponse.json(
-      { success: false, message: "خطا در دریافت سفارش‌های ادمین" },
-      { status: 500 }
+    return handleApiError(
+      "GET /api/admin/orders",
+      error,
+      "خطا در دریافت سفارش‌های ادمین"
     );
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await ensureAdmin();
+    if (!(await getCurrentAdmin())) return forbidden();
 
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, message: "دسترسی غیرمجاز" },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const parsed = updateStatusSchema.safeParse(body);
+    const parsed = updateStatusSchema.safeParse(
+      await request.json().catch(() => null)
+    );
 
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: parsed.error.issues[0]?.message || "اطلاعات نامعتبر است",
-        },
-        { status: 400 }
-      );
+      return fail(400, parsed.error.issues[0]?.message || "اطلاعات نامعتبر است");
     }
 
     const { orderNumber, status } = parsed.data;
 
-    const existingOrder = await prisma.order.findUnique({
-      where: { orderNumber },
-    });
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { orderNumber },
+        include: { items: true },
+      });
 
-    if (!existingOrder) {
-      return NextResponse.json(
-        { success: false, message: "سفارش پیدا نشد" },
-        { status: 404 }
-      );
-    }
+      if (!order) throw new ApiError(404, "سفارش پیدا نشد");
 
-    const updatedOrder = await prisma.order.update({
-      where: { orderNumber },
-      data: { status },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            phone: true,
-          },
-        },
-        items: true,
-      },
+      if (order.status === status) {
+        return tx.order.findUniqueOrThrow({
+          where: { orderNumber },
+          include: orderInclude,
+        });
+      }
+
+      // A cancelled order already gave its stock back; reviving it would need
+      // that stock again, so the customer has to place a new order instead.
+      if (order.status === "CANCELLED") {
+        throw new ApiError(409, "سفارش لغوشده قابل بازگردانی نیست");
+      }
+
+      // Guarding on the previous status makes the transition happen exactly
+      // once, even if two admins press the button together.
+      const { count } = await tx.order.updateMany({
+        where: { orderNumber, status: order.status },
+        data: { status },
+      });
+
+      if (count !== 1) {
+        throw new ApiError(409, "وضعیت سفارش هم‌زمان تغییر کرده است");
+      }
+
+      if (status === "CANCELLED") {
+        for (const item of order.items) {
+          if (!item.productId) continue;
+
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      }
+
+      return tx.order.findUniqueOrThrow({
+        where: { orderNumber },
+        include: orderInclude,
+      });
     });
 
     return NextResponse.json({
@@ -188,11 +112,10 @@ export async function PATCH(request: NextRequest) {
       order: formatOrder(updatedOrder),
     });
   } catch (error) {
-    console.error("PATCH /api/admin/orders error:", error);
-
-    return NextResponse.json(
-      { success: false, message: "خطا در به‌روزرسانی سفارش" },
-      { status: 500 }
+    return handleApiError(
+      "PATCH /api/admin/orders",
+      error,
+      "خطا در به‌روزرسانی سفارش"
     );
   }
 }

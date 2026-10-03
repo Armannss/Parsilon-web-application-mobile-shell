@@ -5,9 +5,13 @@ export type PublicProduct = {
   slug: string;
   code: string;
   price: string;
+  /** Price in rials as a number; use this for arithmetic. */
+  priceValue?: number;
   image: string;
   category?: string;
+  categoryName?: string;
   brand?: string;
+  brandSlug?: string;
   stock: number;
   isAvailable: boolean;
   shortDescription?: string;

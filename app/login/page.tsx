@@ -47,9 +47,27 @@ export default function LoginPage() {
     setIsError(false);
   };
 
+  // Where the visitor was heading before being sent to login. Only same-site
+  // paths are accepted, so the parameter cannot redirect to another website.
+  const readNextPath = () => {
+    const next = new URLSearchParams(window.location.search).get("next");
+
+    if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {
+      return null;
+    }
+
+    return next;
+  };
+
   const resolveRedirectPath = async (
     resultUser?: AuthUser
   ): Promise<string> => {
+    const next = readNextPath();
+
+    if (next && (resultUser?.role === "ADMIN" || !next.startsWith("/admin"))) {
+      return next;
+    }
+
     if (resultUser?.role === "ADMIN") {
       return "/admin";
     }
@@ -95,14 +113,11 @@ export default function LoginPage() {
           phone,
           password,
         })) as AuthActionResult;
-
-        console.log("REGISTER RESULT:", result);
         setMessage(result.message);
         setIsError(!result.success);
 
         if (result.success) {
           const redirectPath = await resolveRedirectPath(result.user);
-          console.log("REGISTER SUCCESS -> redirecting to", redirectPath);
           window.location.href = redirectPath;
         }
 
@@ -113,14 +128,11 @@ export default function LoginPage() {
         phone,
         password,
       })) as AuthActionResult;
-
-      console.log("LOGIN RESULT:", result);
       setMessage(result.message);
       setIsError(!result.success);
 
       if (result.success) {
         const redirectPath = await resolveRedirectPath(result.user);
-        console.log("LOGIN SUCCESS -> redirecting to", redirectPath);
         window.location.href = redirectPath;
       }
     } catch (error) {

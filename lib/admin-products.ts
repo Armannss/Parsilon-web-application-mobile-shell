@@ -34,6 +34,12 @@ export function resolveProductImage(src?: string) {
   const value = (src || "").trim();
 
   if (!value) return FALLBACK_PRODUCT_IMAGE;
+
+  // Some rows hold a path from the machine the image was uploaded on; only
+  // the part under /public is a real URL.
+  const publicIndex = value.indexOf("/public/");
+  if (publicIndex !== -1) return value.slice(publicIndex + "/public".length);
+
   if (value.startsWith("/")) return value;
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
 

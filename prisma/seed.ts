@@ -18,8 +18,20 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const adminPassword = await bcrypt.hash("123456", 10);
-  const userPassword = await bcrypt.hash("123456", 10);
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("The seed script creates demo accounts; do not run it in production.");
+  }
+
+  const seedPassword = process.env.SEED_PASSWORD;
+
+  if (!seedPassword || seedPassword.length < 8) {
+    throw new Error(
+      "Set SEED_PASSWORD (at least 8 characters) to choose the password of the seeded accounts."
+    );
+  }
+
+  const adminPassword = await bcrypt.hash(seedPassword, 12);
+  const userPassword = await bcrypt.hash(seedPassword, 12);
 
   const iranKhodro = await prisma.brand.upsert({
     where: { slug: "iran-khodro" },

@@ -1,16 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserFromCookie } from "@/lib/auth";
-
-async function ensureAdmin() {
-  const currentUser = await getCurrentUserFromCookie();
-
-  if (!currentUser || currentUser.role !== "ADMIN") {
-    return null;
-  }
-
-  return currentUser;
-}
+import { getCurrentAdmin } from "@/lib/auth";
 
 function startOfToday() {
   const now = new Date();
@@ -41,7 +31,7 @@ function normalizeOrderStatus(status: string) {
 
 export async function GET() {
   try {
-    const admin = await ensureAdmin();
+    const admin = await getCurrentAdmin();
 
     if (!admin) {
       return NextResponse.json(

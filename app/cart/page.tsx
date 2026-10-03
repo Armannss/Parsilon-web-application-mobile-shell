@@ -12,6 +12,7 @@ import {
   setCartQuantity,
   type CartItem as StoredCartItem,
 } from "@/lib/utils";
+import { SHIPPING_COST } from "@/lib/pricing";
 import {
   getCartSummary,
   getRelatedAvailableProducts,
@@ -91,7 +92,8 @@ export default function CartPage() {
     loadCartData();
   }, [mounted, cartItems, version]);
 
-  const shippingCost = summary.validItems.length > 0 ? 150000 : 0;
+  const shippingCost =
+    summary.validItems.length > 0 ? SHIPPING_COST.NORMAL : 0;
   const total = summary.subtotal + shippingCost;
 
   if (!mounted) {
