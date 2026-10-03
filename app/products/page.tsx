@@ -20,7 +20,6 @@ const SORTS: Array<{ id: ProductSort; label: string }> = [
 type Filters = {
   search: string;
   brand: string;
-  car: string;
   category: string;
   sort: ProductSort;
   available: boolean;
@@ -37,7 +36,6 @@ function hrefWith(filters: Filters, changes: Partial<Filters>) {
 
   if (next.search) params.set("search", next.search);
   if (next.brand) params.set("brand", next.brand);
-  if (next.car) params.set("car", next.car);
   if (next.category) params.set("category", next.category);
   if (next.sort !== "default") params.set("sort", next.sort);
   if (next.available) params.set("available", "1");
@@ -83,17 +81,15 @@ export default async function ProductsPage({
     search: first(params.search).slice(0, 100),
     // Older links used "all" to mean "no filter".
     brand: first(params.brand) === "all" ? "" : first(params.brand),
-    car: first(params.car),
     category: first(params.category) === "all" ? "" : first(params.category),
     sort: SORTS.some((sort) => sort.id === sortParam) ? sortParam : "default",
     available: first(params.available) === "1",
   };
 
-  const [result, brands, categories, carRows] = await Promise.all([
+  const [result, brands, categories] = await Promise.all([
     listProducts({
       search: filters.search || undefined,
       brand: filters.brand || undefined,
-      car: filters.car || undefined,
       category: filters.category || undefined,
       sort: filters.sort,
       availableOnly: filters.available,
@@ -109,29 +105,17 @@ export default async function ProductsPage({
       orderBy: { products: { _count: "desc" } },
       select: { name: true, slug: true },
     }),
-    prisma.product.findMany({ select: { compatibleCars: true } }),
   ]);
-
-  // Cars ranked by how many parts fit them.
-  const carCounts = new Map<string, number>();
-  for (const row of carRows) {
-    for (const car of row.compatibleCars) {
-      carCounts.set(car, (carCounts.get(car) ?? 0) + 1);
-    }
-  }
-  const cars = [...carCounts].sort((a, b) => b[1] - a[1]).map(([car]) => car);
 
   const activeCategory = categories.find((c) => c.slug === filters.category);
   const hasFilters = Boolean(
-    filters.search || filters.brand || filters.car || filters.category || filters.available
+    filters.search || filters.brand || filters.category || filters.available
   );
   const { query } = hrefWith(filters, {});
 
   const heading = filters.search
     ? `نتایج «${filters.search}»`
-    : filters.car
-      ? `قطعات ${filters.car}`
-      : (activeCategory?.name ?? filters.brand) || "همه قطعات";
+    : (activeCategory?.name ?? filters.brand) || "همه قطعات";
 
   return (
     <MobileShell>
@@ -159,7 +143,6 @@ export default async function ProductsPage({
             />
             {/* Searching keeps the other filters. */}
             {filters.brand ? <input type="hidden" name="brand" value={filters.brand} /> : null}
-            {filters.car ? <input type="hidden" name="car" value={filters.car} /> : null}
             {filters.category ? <input type="hidden" name="category" value={filters.category} /> : null}
             {filters.sort !== "default" ? <input type="hidden" name="sort" value={filters.sort} /> : null}
             {filters.available ? <input type="hidden" name="available" value="1" /> : null}
@@ -207,25 +190,6 @@ export default async function ProductsPage({
               );
             })}
           </nav>
-
-          {cars.length > 0 ? (
-            <nav aria-label="فیلتر بر اساس خودرو" className="no-scrollbar mt-2 flex items-center gap-2 overflow-x-auto px-4">
-              <span className="shrink-0 text-[11px] font-bold text-slate-400">خودرو</span>
-              {/* The chosen car is shown first so it never scrolls out of view. */}
-              {[...cars].sort((a, b) => Number(b === filters.car) - Number(a === filters.car)).map((car) => {
-                const active = filters.car === car;
-                return (
-                  <Chip
-                    key={car}
-                    href={hrefWith(filters, { car: active ? "" : car }).href}
-                    active={active}
-                  >
-                    {car}
-                  </Chip>
-                );
-              })}
-            </nav>
-          ) : null}
         </div>
 
         <section className="px-4 pt-4">

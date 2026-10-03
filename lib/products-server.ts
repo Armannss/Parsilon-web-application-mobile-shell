@@ -19,8 +19,6 @@ export type ProductQuery = {
   category?: string;
   sort?: ProductSort;
   slugs?: string[];
-  /** Exact compatible car name, e.g. "پراید". */
-  car?: string;
   /** Hide products that cannot be ordered right now. */
   availableOnly?: boolean;
   /** Only products worth showcasing: orderable and with a real photo. */
@@ -60,10 +58,9 @@ export function formatPublicProduct(product: ProductWithRelations, index = 0) {
 export type PublicProductPayload = ReturnType<typeof formatPublicProduct>;
 
 function buildWhere(query: ProductQuery): Prisma.ProductWhereInput {
-  const { search, brand, category, slugs, showcase, availableOnly, car } = query;
+  const { search, brand, category, slugs, showcase, availableOnly } = query;
 
   return {
-    ...(car ? { compatibleCars: { has: car } } : {}),
     ...(availableOnly ? { isAvailable: true, stock: { gt: 0 } } : {}),
     ...(showcase
       ? {
@@ -96,13 +93,8 @@ function buildWhere(query: ProductQuery): Prisma.ProductWhereInput {
 }
 
 const ORDER_BY: Record<ProductSort, Prisma.ProductOrderByWithRelationInput[]> = {
-  // Orderable items first, then those with a photo, then newest.
-  default: [
-    { isAvailable: "desc" },
-    { image: { sort: "desc", nulls: "last" } },
-    { createdAt: "desc" },
-    { id: "asc" },
-  ],
+  // Available items first, then newest.
+  default: [{ isAvailable: "desc" }, { createdAt: "desc" }, { id: "asc" }],
   "price-asc": [{ price: "asc" }, { id: "asc" }],
   "price-desc": [{ price: "desc" }, { id: "asc" }],
   "code-asc": [{ code: "asc" }],

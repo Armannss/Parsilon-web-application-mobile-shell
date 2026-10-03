@@ -205,7 +205,7 @@ export default function SearchPage() {
                 <span className="font-black text-slate-900">{total.toLocaleString("fa-IR")}</span>{" "}
                 نتیجه برای «{term}»
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-6">
+              <div className="mt-3 grid grid-cols-2 gap-3">
                 {results.map((product) => (
                   <ProductCard key={product.slug} product={product} />
                 ))}
