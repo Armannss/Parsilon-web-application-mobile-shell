@@ -146,13 +146,13 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-[24px] bg-white transition-transform duration-200 active:scale-[0.98]">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_6px_20px_rgba(14,47,109,0.05)] transition-shadow duration-200 hover:shadow-[0_10px_28px_rgba(14,47,109,0.10)]">
       <Link
         href={`/products/${product.slug}`}
         className="flex flex-1 flex-col focus-visible:outline-none"
         aria-label={product.name}
       >
-        <div className="relative aspect-square overflow-hidden bg-white">
+        <div className="relative aspect-square overflow-hidden bg-slate-50">
           <img
             src={imageSrc}
             alt=""
@@ -167,11 +167,15 @@ export default function ProductCard({ product }: ProductCardProps) {
             } ${isUnavailable ? "opacity-60 grayscale" : ""}`}
           />
 
-          {isUnavailable ? (
-            <span className="absolute right-3 top-3 rounded-full bg-slate-900/70 px-2.5 py-0.5 text-[10px] font-medium text-white">
-              {stockLabel}
-            </span>
-          ) : null}
+          <span
+            className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              isUnavailable
+                ? "bg-slate-900/70 text-white"
+                : "bg-emerald-500/95 text-white"
+            }`}
+          >
+            {stockLabel}
+          </span>
 
           {brandLogo ? (
             <img
@@ -185,7 +189,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex flex-1 flex-col p-3">
           {categoryLabel ? (
-            <span className="text-[10px] font-medium text-accent-600">
+            <span className="text-[10px] font-bold text-brand-600">
               {categoryLabel}
             </span>
           ) : null}
@@ -212,7 +216,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         {hasInquiryPrice ? (
           <Link
             href="/wholesale"
-            className="flex h-10 w-full items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-700 transition-transform active:scale-[0.97]"
+            className="flex h-11 w-full items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-700 transition-transform active:scale-[0.97]"
           >
             استعلام قیمت
           </Link>
@@ -227,7 +231,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 ? "cursor-not-allowed bg-slate-300"
                 : added
                   ? "bg-emerald-600"
-                  : "bg-brand-600"
+                  : "bg-brand-800 hover:bg-brand-900"
             }`}
           >
             {isUnavailable ? (
@@ -256,7 +260,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-[24px] bg-white" aria-hidden="true">
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white" aria-hidden="true">
       <div className="skeleton aspect-square" />
       <div className="space-y-2 p-3">
         <div className="skeleton h-3 w-1/3 rounded-full" />

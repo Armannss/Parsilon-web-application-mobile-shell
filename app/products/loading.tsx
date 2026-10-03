@@ -5,7 +5,7 @@ export default function ProductsLoading() {
   return (
     <MobileShell>
       <main
-        className="min-h-screen bg-[#F5F5F7] px-4 pb-28 pt-24"
+        className="min-h-screen bg-[#F4F7FC] px-4 pb-28 pt-24"
         role="status"
         aria-label="در حال دریافت محصولات"
       >

@@ -117,7 +117,7 @@ export default function SearchPage() {
     <MobileShell>
       <AppHeader title="جستجو" backHref="/" />
 
-      <main className="min-h-screen bg-[#F5F5F7] px-4 pb-28 pt-4 text-right">
+      <main className="min-h-screen bg-[#F4F7FC] px-4 pb-28 pt-4 text-right">
         <form
           role="search"
           onSubmit={(event) => {
