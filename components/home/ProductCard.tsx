@@ -159,9 +159,12 @@ export default function ProductCard({ product }: ProductCardProps) {
             loading="lazy"
             decoding="async"
             onError={() => setImageSrc(getFallbackProductImage())}
-            className={`h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.04] ${
-              isUnavailable ? "opacity-60 grayscale" : ""
-            }`}
+            className={`h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.04] ${
+              // No photo yet: show the logo small and quiet, not as if it were the product.
+              imageSrc === getFallbackProductImage()
+                ? "p-9 opacity-30 mix-blend-multiply"
+                : "p-3"
+            } ${isUnavailable ? "opacity-60 grayscale" : ""}`}
           />
 
           <span

@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
               .map((slug) => slug.trim())
               .filter(Boolean)
               .slice(0, 100),
+      availableOnly: searchParams.get("available") === "1",
       page: readPositiveInt(searchParams.get("page")),
       // Without `limit` the full list is returned, as older screens expect.
       limit: readPositiveInt(searchParams.get("limit")),
