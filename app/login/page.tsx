@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
 import MobileShell from "@/components/layout/MobileShell";
-import { BrakeDiscArt } from "@/components/home/PartArt";
 import { useAuth } from "@/context/AuthContext";
 
 type Mode = "login" | "register";
@@ -161,7 +160,6 @@ export default function LoginPage() {
     <MobileShell>
       <main className="min-h-screen bg-[#F4F7FC] text-right">
         <div className="relative overflow-hidden bg-gradient-to-b from-brand-800 to-brand-900 px-6 pb-16 pt-10 text-white">
-          <BrakeDiscArt className="absolute -left-16 -top-10 h-52 w-52 animate-spin-slow opacity-25" />
 
           {/* The logo file has wide empty margins, so it is cropped by its frame. */}
           <Link

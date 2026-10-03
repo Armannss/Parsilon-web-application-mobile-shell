@@ -6,7 +6,6 @@ import MobileShell from "@/components/layout/MobileShell";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import AuthGuard from "@/components/auth/AuthGuard";
-import { BrakeDiscArt } from "@/components/home/PartArt";
 import { useAuth } from "@/context/AuthContext";
 import { getOrderStatusMeta, useOrder } from "@/context/OrderContext";
 import { formatRial } from "@/lib/format";
@@ -88,7 +87,6 @@ export default function ProfilePage() {
 
         <main className="min-h-screen bg-[#F4F7FC] px-4 pb-28 pt-4 text-right">
           <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-bl from-brand-700 to-brand-900 p-5 text-white shadow-float">
-            <BrakeDiscArt className="absolute -bottom-16 -left-14 h-44 w-44 animate-spin-slow opacity-20" />
 
             <div className="relative flex items-center gap-3.5">
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-xl font-black">

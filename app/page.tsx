@@ -3,9 +3,7 @@ import MobileShell from "@/components/layout/MobileShell";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import ProductCard from "@/components/home/ProductCard";
-import { BearingArt, BrakeDiscArt } from "@/components/home/PartArt";
 import ProductImage from "@/components/product/ProductImage";
-import CountUp from "@/components/ui/CountUp";
 import Reveal from "@/components/ui/Reveal";
 import { resolveBrandLogo } from "@/lib/brands";
 import { prisma } from "@/lib/prisma";
@@ -103,12 +101,11 @@ export default async function HomePage() {
 
   const productLines = lineProducts.filter((line) => line.count > 0);
   const cars = [...new Set(carRows.flatMap((row) => row.compatibleCars))];
-  const heroProduct = featured.products[0];
 
   const stats = [
-    { value: productCount, label: "قطعه در کاتالوگ" },
-    { value: cars.length, label: "مدل خودرو" },
-    { value: brands.length, label: "برند خودرو" },
+    { value: "+۲۵", label: "سال تجربه تولید" },
+    { value: productCount.toLocaleString("fa-IR"), label: "قطعه در کاتالوگ" },
+    { value: cars.length.toLocaleString("fa-IR"), label: "مدل خودرو" },
   ];
 
   return (
@@ -116,146 +113,67 @@ export default async function HomePage() {
       <AppHeader />
 
       <main className="bg-[#F4F7FC] pb-28 text-right">
-        {/* Hero */}
+        {/* Hero: calm and photographic, like parsilonpart.com */}
         <section className="px-4 pt-4">
-          <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-b from-brand-800 via-brand-900 to-[#081B44] px-5 pb-6 pt-6 text-white shadow-float">
-            {/* Glow behind the disc */}
-            <div
-              aria-hidden="true"
-              className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-brand-500/30 blur-3xl"
-            />
-            <div
-              aria-hidden="true"
-              className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent-500/15 blur-3xl"
+          <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-card">
+            <img
+              src="/images/parsilon-hero-board.jpg"
+              alt="دیسک ترمز، کاسه چرخ، بلبرینگ و سیلندر ترمز پارسیلون در کنار بسته‌بندی محصول"
+              className="aspect-[686/617] w-full object-cover"
             />
 
-            <div className="relative animate-fade-up">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-accent-400 backdrop-blur">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-accent-400" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-500" />
-                </span>
-                تولیدکننده قطعات ترمز و بلبرینگ خودرو
-              </span>
-
-              <h1 className="mt-4 text-[28px] font-black leading-[1.55]">
-                ترمزی که
-                <span className="mx-1.5 bg-gradient-to-l from-accent-400 to-accent-500 bg-clip-text text-transparent">
-                  مطمئن
-                </span>
-                می‌ایستد
+            <div className="px-5 pb-5 pt-4 text-center">
+              <h1 className="text-[22px] font-black leading-9 text-brand-900">
+                خودروی شما برای ما مهم است!
               </h1>
-
-              <p className="mt-2 max-w-[15rem] text-[13px] leading-7 text-brand-100">
-                دیسک، کاسه چرخ، سیلندر و بلبرینگ؛ مستقیم از تولیدکننده.
+              <span className="mx-auto mt-3 block h-[3px] w-14 rounded-full bg-slate-300" />
+              <p className="mt-3 text-[13px] leading-7 text-slate-600">
+                تولیدکننده تخصصی قطعات خودرو با نگاه تخصصی بر روی قطعات ترمز.
               </p>
-            </div>
 
-            {/* The parts themselves: a turning disc, a rolling bearing and a real product */}
-            <div className="relative mt-2 h-52" aria-hidden="true">
-              <BrakeDiscArt className="absolute -left-16 top-0 h-56 w-56 animate-spin-slow drop-shadow-[0_18px_30px_rgba(0,0,0,0.45)]" />
-
-              <BearingArt className="absolute left-[9.5rem] top-1 h-16 w-16 animate-float drop-shadow-[0_10px_18px_rgba(0,0,0,0.4)]" />
-
-              {heroProduct ? (
-                <div
-                  className="absolute bottom-1 right-0 w-36 animate-float rounded-2xl border border-white/15 bg-white/95 p-2 shadow-float"
-                  style={{ animationDelay: "-2.5s" }}
+              {/* A plain GET form: works even before JavaScript loads. */}
+              <form action="/products" method="get" role="search" className="relative mt-4">
+                <label htmlFor="home-search" className="sr-only">
+                  جستجوی قطعه
+                </label>
+                <input
+                  id="home-search"
+                  name="search"
+                  type="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  placeholder="نام قطعه، کد فنی یا خودرو"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-24 pr-4 text-right text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
+                />
+                <button
+                  type="submit"
+                  className="absolute left-1.5 top-1.5 flex h-[calc(100%-12px)] items-center gap-1.5 rounded-xl bg-brand-800 px-4 text-xs font-black text-white transition-transform active:scale-95"
                 >
-                  <ProductImage
-                    src={heroProduct.image}
-                    alt=""
-                    eager
-                    className="aspect-[4/3] w-full rounded-xl object-contain"
-                  />
-                  <div className="mt-1.5 truncate text-[10px] font-black text-slate-800">
-                    {heroProduct.name}
-                  </div>
-                  <div className="text-[10px] font-bold text-brand-700">
-                    {heroProduct.price}
-                  </div>
-                </div>
-              ) : null}
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.2-5.2m0 0A7.5 7.5 0 1 0 5.2 5.2a7.5 7.5 0 0 0 10.6 10.6Z" />
+                  </svg>
+                  جستجو
+                </button>
+              </form>
             </div>
-
-            {/* A plain GET form: works even before JavaScript loads. */}
-            <form
-              action="/products"
-              method="get"
-              role="search"
-              className="relative mt-4"
-            >
-              <label htmlFor="home-search" className="sr-only">
-                جستجوی قطعه
-              </label>
-              <input
-                id="home-search"
-                name="search"
-                type="search"
-                enterKeyHint="search"
-                autoComplete="off"
-                placeholder="نام قطعه، کد فنی یا خودرو"
-                className="w-full rounded-2xl border-0 bg-white py-3.5 pl-24 pr-4 text-sm font-medium text-slate-900 shadow-float placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500"
-              />
-              <button
-                type="submit"
-                className="absolute left-1.5 top-1.5 flex h-[calc(100%-12px)] items-center gap-1.5 rounded-xl bg-accent-500 px-4 text-xs font-black text-brand-900 transition-transform active:scale-95"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m21 21-5.2-5.2m0 0A7.5 7.5 0 1 0 5.2 5.2a7.5 7.5 0 0 0 10.6 10.6Z"
-                  />
-                </svg>
-                جستجو
-              </button>
-            </form>
-
-            <dl className="relative mt-5 grid grid-cols-3 divide-x divide-x-reverse divide-white/10 text-center">
-              {stats.map((stat) => (
-                <div key={stat.label}>
-                  <dd className="text-xl font-black text-white">
-                    <CountUp value={stat.value} />
-                  </dd>
-                  <dt className="mt-0.5 text-[10px] text-brand-200">
-                    {stat.label}
-                  </dt>
-                </div>
-              ))}
-            </dl>
           </div>
         </section>
 
-        {/* Compatible cars, scrolling by */}
+        {/* Supported cars */}
         {cars.length > 0 ? (
           <section className="pt-4" aria-label="خودروهای پشتیبانی‌شده">
-            {/* The track is laid out left-to-right and holds the list twice, so
-                sliding it by half its width loops seamlessly. */}
-            <div className="overflow-hidden" dir="ltr">
-              <ul className="flex w-max animate-marquee gap-2 hover:[animation-play-state:paused]">
-                {[...cars, ...cars].map((car, index) => (
-                  <li key={index} aria-hidden={index >= cars.length}>
-                    <Link
-                      href={`/products?search=${encodeURIComponent(car)}`}
-                      tabIndex={index >= cars.length ? -1 : undefined}
-                      dir="rtl"
-                      className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-card"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
-                      {car}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ul className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-1">
+              {cars.map((car) => (
+                <li key={car} className="shrink-0">
+                  <Link
+                    href={`/products?search=${encodeURIComponent(car)}`}
+                    className="block whitespace-nowrap rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700"
+                  >
+                    {car}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
 
@@ -275,7 +193,7 @@ export default async function HomePage() {
                       <ProductImage
                         src={line.image}
                         alt=""
-                        className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-110"
+                        className="h-full w-full object-contain p-3 "
                       />
                       <span className="absolute left-2 top-2 rounded-full bg-brand-900/85 px-2 py-0.5 text-[10px] font-bold text-white">
                         {line.count.toLocaleString("fa-IR")} مدل
@@ -295,6 +213,31 @@ export default async function HomePage() {
             </section>
           </Reveal>
         ) : null}
+
+        {/* About the brand */}
+        <Reveal>
+          <section className="px-4 pt-7">
+            <div className="rounded-[28px] bg-brand-800 px-5 py-6 text-white">
+              <h2 className="text-xl font-black leading-9 text-sky-300">
+                پارسیلون؛ برند تخصصی قطعات خودرو
+              </h2>
+              <span className="mt-3 block h-[3px] w-14 rounded-full bg-white/40" />
+              <p className="mt-4 text-[13px] leading-7 text-brand-50">
+                پارسیلون برند ثبت‌شده و ارائه‌دهنده محصولات شرکت بهساز فولاد
+                تهران است؛ با بیش از ۲۵ سال تجربه در تولید قطعات خودرو برای
+                شرکت‌های خودروساز و مجموعه‌ساز.
+              </p>
+              <dl className="mt-5 grid grid-cols-3 divide-x divide-x-reverse divide-white/15 text-center">
+                {stats.map((stat) => (
+                  <div key={stat.label}>
+                    <dd className="text-xl font-black">{stat.value}</dd>
+                    <dt className="mt-0.5 text-[10px] text-brand-100">{stat.label}</dt>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </section>
+        </Reveal>
 
         {/* Brands */}
         {brands.length > 0 ? (
@@ -463,7 +406,6 @@ export default async function HomePage() {
         <Reveal>
           <section className="px-4 pt-4">
             <div className="relative overflow-hidden rounded-3xl bg-slate-900 p-5 text-white">
-              <BrakeDiscArt className="absolute -bottom-14 -left-14 h-40 w-40 animate-spin-slow opacity-20" />
               <h2 className="relative text-base font-black">
                 فروش عمده به همکاران
               </h2>
@@ -487,6 +429,26 @@ export default async function HomePage() {
             </div>
           </section>
         </Reveal>
+
+        <footer className="mx-4 mt-4 rounded-3xl bg-brand-900 px-5 py-6 text-xs leading-7 text-brand-100">
+          <div className="text-sm font-black text-white">راه‌های ارتباطی</div>
+          <p className="mt-2">
+            شهرک صنعتی اشتهارد، بلوار ابوریحان، بلوار ملاصدرای شرقی، خیابان
+            سبلان سوم، پلاک ۳۴۱۵
+          </p>
+          <p className="mt-1">
+            تلفن:{" "}
+            <a href="tel:02637775224" dir="ltr" className="font-bold text-white">
+              ۰۲۶-۳۷۷۷۵۲۲۴
+            </a>
+          </p>
+          <p>
+            ایمیل:{" "}
+            <a href="mailto:info@parsilonpart.com" dir="ltr" className="font-bold text-white">
+              info@parsilonpart.com
+            </a>
+          </p>
+        </footer>
       </main>
 
       <BottomNav />
