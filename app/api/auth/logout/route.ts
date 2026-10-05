@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/lib/auth";
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/auth";
 
 export async function POST() {
   const response = NextResponse.json({
@@ -8,10 +8,7 @@ export async function POST() {
   });
 
   response.cookies.set(SESSION_COOKIE_NAME, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
+    ...sessionCookieOptions,
     maxAge: 0,
   });
 

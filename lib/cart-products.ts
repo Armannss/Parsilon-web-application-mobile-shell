@@ -1,6 +1,9 @@
 import type { PublicProduct } from "./public-products";
 import { resolveProductImage } from "./admin-products";
 import type { CartItem as StoredCartItem } from "./utils";
+import { parsePrice } from "./format";
+
+export { parsePrice as parsePersianPrice };
 
 export type ResolvedCartItem = {
   slug: string;
@@ -35,16 +38,6 @@ function parseStockValue(stock: unknown) {
   }
 
   return 0;
-}
-
-export function parsePersianPrice(price?: string) {
-  if (!price || price.includes("تماس")) return 0;
-
-  const englishDigits = price
-    .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
-    .replace(/[^\d]/g, "");
-
-  return Number(englishDigits || 0);
 }
 
 function isValidProduct(item: unknown): item is PublicProduct {
@@ -172,41 +165,67 @@ export function resolveCartItems(
   });
 }
 
-export function getCartSummary(cartItems: StoredCartItem[]) {
-  const resolvedItems = resolveCartItems(cartItems);
-
+function summarize(resolvedItems: ResolvedCartItem[]) {
   const validItems = resolvedItems.filter(
     (item) => item.product && !item.isMissing && !item.isUnavailable
   );
 
-  const subtotal = validItems.reduce((sum, item) => {
-    return sum + parsePersianPrice(item.product?.price) * item.quantity;
-  }, 0);
-
-  const itemCount = validItems.reduce((sum, item) => {
-    return sum + item.quantity;
-  }, 0);
-
-  const hasMissingItems = resolvedItems.some((item) => item.isMissing);
-  const hasUnavailableItems = resolvedItems.some((item) => item.isUnavailable);
-
   return {
     resolvedItems,
     validItems,
-    subtotal,
-    itemCount,
-    hasMissingItems,
-    hasUnavailableItems,
+    subtotal: validItems.reduce(
+      (sum, item) =>
+        sum +
+        (item.product?.priceValue ?? parsePrice(item.product?.price)) *
+          item.quantity,
+      0
+    ),
+    itemCount: validItems.reduce((sum, item) => sum + item.quantity, 0),
+    hasMissingItems: resolvedItems.some((item) => item.isMissing),
+    hasUnavailableItems: resolvedItems.some((item) => item.isUnavailable),
   };
 }
 
-export function getRelatedAvailableProducts(limit = 4) {
-  const products = readProductsFromApiCache();
+/**
+ * Prices and stock for the cart always come fresh from the server. The
+ * localStorage cache is only a fallback for when the request fails, so a
+ * stale cached price is never what the customer checks out with.
+ */
+export async function getCartSummary(cartItems: StoredCartItem[]) {
+  if (cartItems.length === 0) return summarize([]);
 
-  return products
-    .filter((item) => {
-      const stockValue = parseStockValue(item.stock);
-      return item.isAvailable !== false && stockValue > 0;
-    })
-    .slice(0, limit);
+  try {
+    const slugs = cartItems.map((item) => encodeURIComponent(item.slug));
+    const response = await fetch(`/api/products?slugs=${slugs.join(",")}`, {
+      cache: "no-store",
+    });
+    const data = await response.json();
+
+    if (response.ok && data?.success && Array.isArray(data.products)) {
+      const live = new Map<string, PublicProduct>(
+        (data.products as PublicProduct[]).map((p) => [p.slug, p])
+      );
+
+      return summarize(
+        cartItems.map((item) => {
+          const product = live.get(item.slug) ?? null;
+
+          return {
+            slug: item.slug,
+            quantity: item.quantity,
+            product,
+            isMissing: !product,
+            isUnavailable:
+              !product || !product.isAvailable || product.stock < item.quantity,
+            safeImage: resolveProductImage(product?.image || ""),
+          };
+        })
+      );
+    }
+  } catch {
+    // fall through to the cached copy
+  }
+
+  return summarize(resolveCartItems(cartItems));
 }
+

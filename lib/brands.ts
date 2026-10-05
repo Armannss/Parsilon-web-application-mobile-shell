@@ -72,9 +72,26 @@ export async function fetchBrands() {
   return data.brands.map(normalizeBrand);
 }
 
-export async function fetchActiveBrands() {
-  const brands = await fetchBrands();
-  return brands.filter((item) => item.isActive);
+let activeBrandsCache: { promise: Promise<Brand[]>; expiresAt: number } | null =
+  null;
+
+// Many components on one screen ask for the brand list; they share a single
+// request for a minute instead of each sending their own.
+export function fetchActiveBrands() {
+  const now = Date.now();
+
+  if (!activeBrandsCache || activeBrandsCache.expiresAt <= now) {
+    const promise = fetchBrands()
+      .then((brands) => brands.filter((item) => item.isActive))
+      .catch((error) => {
+        activeBrandsCache = null;
+        throw error;
+      });
+
+    activeBrandsCache = { promise, expiresAt: now + 60_000 };
+  }
+
+  return activeBrandsCache.promise;
 }
 
 /**

@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MobileShell from "@/components/layout/MobileShell";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import { clearCart, getCartItems, type CartItem } from "@/lib/utils";
+import { computeOrderTotals } from "@/lib/pricing";
 import {
   getCartSummary,
   type ResolvedCartItem,
@@ -90,17 +91,6 @@ function LocationIcon({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-function parsePriceToNumber(price?: string) {
-  if (!price) return 0;
-  if (price.includes("تماس")) return 0;
-
-  const englishDigits = price
-    .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
-    .replace(/[^\d]/g, "");
-
-  return Number(englishDigits || 0);
-}
-
 type CartSummary = {
   resolvedItems: ResolvedCartItem[];
   validItems: ResolvedCartItem[];
@@ -168,19 +158,17 @@ export default function PaymentPage() {
     loadSummary();
   }, [mounted, cartItems]);
 
-  const shippingCost =
-    summary.validItems.length > 0
-      ? checkoutForm.shippingMethod === "express"
-        ? 300000
-        : 150000
-      : 0;
-
-  const vatAmount =
-    summary.validItems.length > 0
-      ? Math.round((summary.subtotal + shippingCost) * 0.1)
-      : 0;
-
-  const total = summary.subtotal + shippingCost + vatAmount;
+  const {
+    shipping: shippingCost,
+    vat: vatAmount,
+    total,
+  } = computeOrderTotals(
+    summary.validItems.map((item) => ({
+      unitPrice: item.product?.priceValue ?? 0,
+      quantity: item.quantity,
+    })),
+    checkoutForm.shippingMethod === "express" ? "EXPRESS" : "NORMAL"
+  );
 
   const canPay =
     !isLoadingSummary &&
@@ -212,13 +200,7 @@ export default function PaymentPage() {
         .map((item) => ({
           productId: item.product.dbId || undefined,
           slug: item.product.slug,
-          name: item.product.name,
-          code: item.product.code,
-          image: item.safeImage,
-          brand: item.product.brand || "",
-          category: item.product.category || "",
           quantity: item.quantity,
-          unitPrice: parsePriceToNumber(item.product.price),
         }));
 
       const shippingMethod =
@@ -232,11 +214,6 @@ export default function PaymentPage() {
         credentials: "include",
         body: JSON.stringify({
           shippingMethod,
-          itemCount: summary.itemCount,
-          subtotal: summary.subtotal,
-          shipping: shippingCost,
-          vat: vatAmount,
-          total,
           customer: {
             fullName: checkoutForm.fullName,
             phone: checkoutForm.phone,

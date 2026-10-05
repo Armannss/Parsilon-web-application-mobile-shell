@@ -9,14 +9,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        sand: "#F6F1E8",
-        clay: "#D97A54",
-        olive: "#355548",
-        ink: "#1E252B",
-        mist: "#EEF2EE",
+        // Parsilon navy, taken from the logo.
+        brand: {
+          50: "#EEF3FB",
+          100: "#D9E4F5",
+          200: "#B3C8EA",
+          300: "#86A6DB",
+          400: "#5580C8",
+          500: "#2F5FB3",
+          600: "#1F4C9C",
+          700: "#17479E",
+          800: "#123A80",
+          900: "#0E2F6D",
+        },
+        // Parsilon green accent.
+        accent: {
+          400: "#A3D45F",
+          500: "#8CC63F",
+          600: "#73A830",
+        },
       },
       boxShadow: {
-        card: "0 18px 40px rgba(30, 37, 43, 0.08)",
+        card: "0 6px 20px rgba(14, 47, 109, 0.05)",
+        float: "0 12px 32px rgba(14, 47, 109, 0.12)",
       },
     },
   },

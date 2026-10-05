@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserFromCookie } from "@/lib/auth";
+import { tooManyRequests } from "@/lib/api";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 const wholesaleSchema = z.object({
-  fullName: z.string().min(2, "نام و نام خانوادگی الزامی است"),
-  phone: z.string().min(5, "شماره تماس الزامی است"),
-  companyName: z.string().optional().default(""),
-  description: z.string().optional().default(""),
+  fullName: z.string().trim().min(2, "نام و نام خانوادگی الزامی است").max(80),
+  phone: z.string().trim().min(5, "شماره تماس الزامی است").max(20),
+  companyName: z.string().max(120).optional().default(""),
+  description: z.string().max(2000, "توضیحات بیش از حد طولانی است").optional().default(""),
 });
 
 function formatWholesaleRequest(request: {
@@ -42,8 +44,16 @@ function formatWholesaleRequest(request: {
 
 export async function POST(request: NextRequest) {
   try {
+    // Public form: cap submissions per address so it cannot be flooded.
+    const limit = rateLimit(
+      `wholesale:ip:${getClientIp(request)}`,
+      5,
+      60 * 60 * 1000
+    );
+    if (!limit.allowed) return tooManyRequests(limit.retryAfterSeconds);
+
     const currentUser = await getCurrentUserFromCookie().catch(() => null);
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
 
     const parsed = wholesaleSchema.safeParse(body);
 

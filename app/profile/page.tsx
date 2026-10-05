@@ -1,258 +1,183 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import MobileShell from "@/components/layout/MobileShell";
+import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import AuthGuard from "@/components/auth/AuthGuard";
-import AppHeader from "@/components/layout/AppHeader";
 import { useAuth } from "@/context/AuthContext";
+import { getOrderStatusMeta, useOrder } from "@/context/OrderContext";
+import { formatRial } from "@/lib/format";
+import { SALES_PHONE } from "@/lib/site";
 
-function UserIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-        d="M15.75 6.75a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 19.5a7.5 7.5 0 0 1 15 0"
-      />
-    </svg>
+const ICONS = {
+  assistant:
+    "M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z",
+  orders:
+    "M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm0 5.25h.007v.008H3.75V12Zm0 5.25h.007v.008H3.75v-.008Z",
+  wholesale:
+    "M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21",
+  phone:
+    "M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z",
+  admin:
+    "M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75",
+};
+
+function MenuRow({
+  href,
+  icon,
+  title,
+  hint,
+  external = false,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  hint?: string;
+  external?: boolean;
+}) {
+  const content = (
+    <>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
+        </svg>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold text-slate-900">{title}</span>
+        {hint ? <span className="mt-0.5 block text-[11px] text-slate-500">{hint}</span> : null}
+      </span>
+      <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 6l-6 6 6 6" />
+      </svg>
+    </>
   );
-}
 
-function PhoneIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-        d="M2.25 4.5A2.25 2.25 0 0 1 4.5 2.25h2.118c.985 0 1.85.667 2.102 1.62l.74 2.774a2.25 2.25 0 0 1-.516 2.13l-1.208 1.208a13.5 13.5 0 0 0 6.282 6.282l1.208-1.208a2.25 2.25 0 0 1 2.13-.516l2.774.74a2.25 2.25 0 0 1 1.62 2.102V19.5a2.25 2.25 0 0 1-2.25 2.25h-.75C10.178 21.75 2.25 13.822 2.25 4.5Z"
-      />
-    </svg>
-  );
-}
+  const className = "flex items-center gap-3 px-4 py-3.5 active:bg-slate-50";
 
-function ShieldIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-        d="M9 12.75 11.25 15 15 9.75m6 2.25a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-      />
-    </svg>
-  );
-}
-
-function BoxIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-        d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
-      />
-    </svg>
-  );
-}
-
-function LogoutIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-        d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-7.5a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 6 21h7.5a2.25 2.25 0 0 0 2.25-2.25V15m5.25-3-3.75-3.75M21 12H9"
-      />
-    </svg>
+  return external ? (
+    <a href={href} className={className}>
+      {content}
+    </a>
+  ) : (
+    <Link href={href} className={className}>
+      {content}
+    </Link>
   );
 }
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, isAdmin, logout } = useAuth();
+  const { orderHistory, isLoadingOrders } = useOrder();
+
+  const activeOrders = orderHistory.filter(
+    (order) => order.status !== "delivered" && order.status !== "cancelled"
+  ).length;
+  const latestOrder = orderHistory[0];
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/");
+  };
 
   return (
     <AuthGuard>
       <MobileShell>
         <AppHeader title="حساب کاربری" backHref="/" />
 
-        <main
-          className="pb-28 text-right"
-          style={{ background: "#F4F7FC", direction: "rtl" }}
-        >
-          <section className="px-4 pt-4">
-            <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_12px_35px_rgba(14,47,109,0.04)]">
-              <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#06183A] via-[#0E2F6D] to-[#355FC7] p-6 text-white">
-                <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                <div className="pointer-events-none absolute -bottom-10 right-0 h-28 w-28 rounded-full bg-[#8CC63F]/20 blur-2xl" />
+        <main className="min-h-screen bg-[#F4F7FC] px-4 pb-28 pt-4 text-right">
+          <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-bl from-brand-700 to-brand-900 p-5 text-white shadow-float">
 
-                <div className="relative z-10">
-                  <div className="flex justify-end">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold backdrop-blur-sm">
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#8CC63F] opacity-70" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#8CC63F]" />
-                      </span>
-                      پنل کاربری
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-                      <UserIcon className="h-7 w-7" />
-                    </div>
-
-                    <div>
-                      <h1 className="text-[28px] font-black leading-[42px] tracking-tight">
-                        حساب کاربری
-                      </h1>
-                      <div className="text-sm font-bold text-white/90">
-                        مدیریت اطلاعات و سفارش‌های ثبت‌شده
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="mt-4 max-w-[310px] text-sm leading-7 text-white/90">
-                    از این بخش می‌توانی مشخصات حساب، وضعیت سفارش‌ها و دسترسی‌های
-                    مرتبط با پروفایل خودت را بررسی کنی.
-                  </p>
-
-                  <div className="mt-4 h-[4px] w-16 rounded-full bg-[#8CC63F]" />
-                </div>
+            <div className="relative flex items-center gap-3.5">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-xl font-black">
+                {user?.fullName.trim().charAt(0) || "؟"}
+              </span>
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-black">{user?.fullName}</h1>
+                <p className="mt-0.5 text-xs text-brand-100" dir="ltr">
+                  {user?.phone}
+                </p>
               </div>
             </div>
+
+            <dl className="relative mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white/10 p-3 backdrop-blur">
+                <dt className="text-[11px] text-brand-100">کل سفارش‌ها</dt>
+                <dd className="mt-1 text-xl font-black">
+                  {isLoadingOrders ? "…" : orderHistory.length.toLocaleString("fa-IR")}
+                </dd>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-3 backdrop-blur">
+                <dt className="text-[11px] text-brand-100">در جریان</dt>
+                <dd className="mt-1 text-xl font-black">
+                  {isLoadingOrders ? "…" : activeOrders.toLocaleString("fa-IR")}
+                </dd>
+              </div>
+            </dl>
           </section>
 
-          <section className="mt-5 px-4">
-            <div className="rounded-[32px] border border-slate-100 bg-white p-5 shadow-[0_12px_40px_rgba(14,47,109,0.03)]">
-              <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-[#0E2F6D]">
-                <ShieldIcon />
-                <h2 className="text-base font-black">اطلاعات حساب</h2>
-              </div>
-
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-slate-50/70 p-4">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <UserIcon className="h-4 w-4" />
-                    <span className="text-[11px] font-bold">نام</span>
-                  </div>
-                  <div className="mt-2 text-sm font-black text-slate-800">
-                    {user?.fullName || "-"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50/70 p-4">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <PhoneIcon className="h-4 w-4" />
-                    <span className="text-[11px] font-bold">شماره موبایل</span>
-                  </div>
-                  <div className="mt-2 text-sm font-black text-slate-800">
-                    {user?.phone || "-"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50/70 p-4">
-                  <div className="text-[11px] font-bold text-slate-400">
-                    نوع حساب
-                  </div>
-                  <div className="mt-2 inline-flex rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-[#17479E]">
-                    {user?.role === "admin" ? "ادمین" : "کاربر"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="mt-5 px-4">
-            <div className="grid grid-cols-2 gap-3">
+          {latestOrder ? (
+            <section className="mt-4">
+              <h2 className="px-1 text-sm font-black text-slate-900">آخرین سفارش</h2>
               <Link
-                href="/profile/orders"
-                className="group rounded-[28px] border border-slate-100 bg-white p-4 shadow-[0_10px_28px_rgba(14,47,109,0.03)] transition-all duration-200 hover:-translate-y-1 active:scale-95"
+                href={`/profile/orders/${latestOrder.orderNumber}`}
+                className="mt-2 block rounded-3xl border border-slate-200/80 bg-white p-4 shadow-card active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-[#17479E]">
-                  <BoxIcon />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700" dir="ltr">
+                    {latestOrder.orderNumber}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${getOrderStatusMeta(latestOrder.status).badgeClass}`}
+                  >
+                    {getOrderStatusMeta(latestOrder.status).label}
+                  </span>
                 </div>
-                <div className="mt-4 text-sm font-black text-slate-800">
-                  سفارش‌ها
-                </div>
-                <div className="mt-1 text-[11px] font-medium leading-5 text-slate-400">
-                  مشاهده و پیگیری سفارش‌های ثبت‌شده
+                <div className="mt-3 flex items-end justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    {new Date(latestOrder.createdAt).toLocaleDateString("fa-IR")} ·{" "}
+                    {latestOrder.itemCount.toLocaleString("fa-IR")} عدد
+                  </span>
+                  <span className="text-sm font-black text-brand-900">
+                    {formatRial(latestOrder.total)}
+                  </span>
                 </div>
               </Link>
-
+            </section>
+          ) : !isLoadingOrders ? (
+            <section className="mt-4 rounded-3xl border border-dashed border-slate-300 bg-white/60 p-5 text-center">
+              <p className="text-sm font-bold text-slate-700">هنوز سفارشی ثبت نکرده‌اید</p>
               <Link
-                href="/profile/orders"
-                className="group rounded-[28px] border border-slate-100 bg-white p-4 shadow-[0_10px_28px_rgba(14,47,109,0.03)] transition-all duration-200 hover:-translate-y-1 active:scale-95"
+                href="/products"
+                className="mt-3 inline-flex h-10 items-center rounded-xl bg-brand-800 px-5 text-xs font-bold text-white"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-green-600">
-                  <ShieldIcon />
-                </div>
-                <div className="mt-4 text-sm font-black text-slate-800">
-                  وضعیت حساب
-                </div>
-                <div className="mt-1 text-[11px] font-medium leading-5 text-slate-400">
-                  مشاهده وضعیت و سوابق سفارش
-                </div>
+                شروع خرید
               </Link>
-            </div>
-          </section>
+            </section>
+          ) : null}
 
-          <section className="mt-5 px-4">
-            <div className="rounded-[32px] border border-red-100 bg-white p-5 shadow-[0_12px_40px_rgba(14,47,109,0.03)]">
-              <div className="flex items-center gap-2 text-red-600">
-                <LogoutIcon />
-                <h2 className="text-base font-black">خروج از حساب</h2>
-              </div>
+          <nav
+            aria-label="حساب کاربری"
+            className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-card"
+          >
+            <MenuRow href="/profile/orders" icon={ICONS.orders} title="سفارش‌های من" hint="پیگیری وضعیت و جزئیات" />
+            <MenuRow href="/assistant" icon={ICONS.assistant} title="دستیار قطعات" hint="قطعه مناسب خودرو را بپرسید" />
+            <MenuRow href="/wholesale" icon={ICONS.wholesale} title="خرید عمده" hint="ویژه تعمیرگاه و فروشگاه" />
+            <MenuRow href={`tel:${SALES_PHONE}`} icon={ICONS.phone} title="تماس با پشتیبانی" external />
+            {isAdmin ? (
+              <MenuRow href="/admin" icon={ICONS.admin} title="پنل مدیریت" />
+            ) : null}
+          </nav>
 
-              <p className="mt-3 text-sm leading-7 text-slate-500">
-                با خروج از حساب، دسترسی شما به پروفایل و پیگیری سفارش‌ها تا ورود
-                مجدد متوقف می‌شود.
-              </p>
-
-              <button
-                type="button"
-                onClick={logout}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3.5 text-sm font-black text-red-600 transition-all duration-200 hover:bg-red-100 active:scale-95"
-              >
-                <LogoutIcon className="h-4 w-4" />
-                خروج
-              </button>
-            </div>
-          </section>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl border border-red-100 bg-white text-sm font-bold text-red-600 active:bg-red-50"
+          >
+            خروج از حساب
+          </button>
         </main>
 
         <BottomNav />

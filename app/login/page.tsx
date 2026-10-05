@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
@@ -47,9 +48,27 @@ export default function LoginPage() {
     setIsError(false);
   };
 
+  // Where the visitor was heading before being sent to login. Only same-site
+  // paths are accepted, so the parameter cannot redirect to another website.
+  const readNextPath = () => {
+    const next = new URLSearchParams(window.location.search).get("next");
+
+    if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {
+      return null;
+    }
+
+    return next;
+  };
+
   const resolveRedirectPath = async (
     resultUser?: AuthUser
   ): Promise<string> => {
+    const next = readNextPath();
+
+    if (next && (resultUser?.role === "ADMIN" || !next.startsWith("/admin"))) {
+      return next;
+    }
+
     if (resultUser?.role === "ADMIN") {
       return "/admin";
     }
@@ -95,14 +114,11 @@ export default function LoginPage() {
           phone,
           password,
         })) as AuthActionResult;
-
-        console.log("REGISTER RESULT:", result);
         setMessage(result.message);
         setIsError(!result.success);
 
         if (result.success) {
           const redirectPath = await resolveRedirectPath(result.user);
-          console.log("REGISTER SUCCESS -> redirecting to", redirectPath);
           window.location.href = redirectPath;
         }
 
@@ -113,14 +129,11 @@ export default function LoginPage() {
         phone,
         password,
       })) as AuthActionResult;
-
-      console.log("LOGIN RESULT:", result);
       setMessage(result.message);
       setIsError(!result.success);
 
       if (result.success) {
         const redirectPath = await resolveRedirectPath(result.user);
-        console.log("LOGIN SUCCESS -> redirecting to", redirectPath);
         window.location.href = redirectPath;
       }
     } catch (error) {
@@ -134,167 +147,180 @@ export default function LoginPage() {
 
   if (!mounted || !isReady) return null;
 
+  const isRegister = mode === "register";
+  const fieldClass =
+    "mt-1.5 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100";
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    resetFeedback();
+  };
+
   return (
     <MobileShell>
-      <main
-        className="pb-24 text-right"
-        style={{ background: "#F4F7FC", direction: "rtl" }}
-      >
-        <div className="mx-auto max-w-sm px-4 pt-6">
-          <div className="space-y-6 rounded-[32px] border border-slate-100 bg-white p-5 shadow-[0_12px_40px_rgba(14,47,109,0.03)]">
-            <div className="space-y-3 rounded-[24px] border border-slate-100 bg-slate-50/50 p-4 text-center shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
-              <div className="mx-auto flex h-14 w-44 items-center justify-center overflow-hidden">
-                <img
-                  src="/images/logo-header-v2.png"
-                  alt="پارسیلون پارت"
-                  className="w-full object-contain -mt-4 -mb-4"
-                />
-              </div>
+      <main className="min-h-screen bg-[#F4F7FC] text-right">
+        <div className="relative overflow-hidden bg-gradient-to-b from-brand-800 to-brand-900 px-6 pb-16 pt-10 text-white">
 
-              <div className="mx-auto h-[3px] w-12 rounded-full bg-[#8CC63F]" />
+          {/* The logo file has wide empty margins, so it is cropped by its frame. */}
+          <Link
+            href="/"
+            className="relative flex h-12 w-40 items-center justify-center overflow-hidden rounded-2xl bg-white"
+          >
+            <img
+              src="/images/logo-header-v2.png"
+              alt="پارسیلون پارت"
+              className="-my-4 w-full object-contain"
+            />
+          </Link>
 
-              <p className="mx-auto max-w-[280px] text-[11px] font-bold leading-5 text-slate-400">
-                اپلیکیشن تخصصی فروش آنلاین و عمده قطعات خودرو در ایران
-              </p>
+          <h1 className="relative mt-6 text-2xl font-black">{title}</h1>
+          <p className="relative mt-1.5 text-xs leading-6 text-brand-100">
+            {isRegister
+              ? "با شماره موبایل، در کمتر از یک دقیقه حساب بسازید."
+              : "برای پیگیری سفارش و خرید، وارد حساب خود شوید."}
+          </p>
+        </div>
+
+        <div className="relative -mt-8 px-4 pb-10">
+          <div className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-float">
+            <div
+              role="tablist"
+              aria-label="ورود یا ثبت‌نام"
+              className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1"
+            >
+              {(["login", "register"] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === item}
+                  onClick={() => switchMode(item)}
+                  className={`rounded-xl py-2.5 text-xs font-black transition-all ${
+                    mode === item
+                      ? "bg-white text-brand-700 shadow-card"
+                      : "text-slate-500"
+                  }`}
+                >
+                  {item === "login" ? "ورود" : "ثبت‌نام"}
+                </button>
+              ))}
             </div>
 
-            <div className="space-y-1.5 pt-1 text-center">
-              <h1 className="text-xl font-black tracking-tight text-[#0E2F6D]">
-                {title}
-              </h1>
-              <p className="text-xs font-bold text-slate-400">
-                {mode === "register"
-                  ? "اطلاعات خود را برای ساخت حساب وارد کنید."
-                  : "برای ادامه، اطلاعات حساب خود را وارد کنید."}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("login");
-                  resetFeedback();
-                }}
-                className={`rounded-xl py-2.5 text-xs font-black transition-all duration-300 active:scale-95 ${
-                  mode === "login"
-                    ? "bg-white text-[#17479E] shadow-[0_4px_12px_rgba(23,71,158,0.06)]"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                ورود
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("register");
-                  resetFeedback();
-                }}
-                className={`rounded-xl py-2.5 text-xs font-black transition-all duration-300 active:scale-95 ${
-                  mode === "register"
-                    ? "bg-white text-[#17479E] shadow-[0_4px_12px_rgba(23,71,158,0.06)]"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                ثبت‌نام
-              </button>
-            </div>
-
-            <div className="space-y-3.5">
-              {mode === "register" && (
-                <div className="relative flex items-center rounded-2xl border border-slate-200 bg-slate-50/30 shadow-inner transition-all focus-within:border-[#17479E] focus-within:bg-white">
+            <form
+              className="mt-5 space-y-4"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSubmit();
+              }}
+            >
+              {isRegister ? (
+                <div>
+                  <label htmlFor="fullName" className="text-xs font-bold text-slate-600">
+                    نام و نام خانوادگی
+                  </label>
                   <input
+                    id="fullName"
                     type="text"
+                    autoComplete="name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="نام و نام خانوادگی"
-                    className="h-11 w-full bg-transparent px-4 text-center text-xs font-bold text-slate-700 outline-none placeholder:text-slate-300"
+                    className={fieldClass}
                   />
                 </div>
-              )}
+              ) : null}
 
-              <div className="relative flex items-center rounded-2xl border border-slate-200 bg-slate-50/30 shadow-inner transition-all focus-within:border-[#17479E] focus-within:bg-white">
+              <div>
+                <label htmlFor="phone" className="text-xs font-bold text-slate-600">
+                  شماره موبایل
+                </label>
                 <input
+                  id="phone"
                   type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  dir="ltr"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="شماره موبایل"
-                  className="h-11 w-full bg-transparent px-4 text-center text-xs font-bold text-slate-700 outline-none placeholder:text-slate-300"
-                  style={{ direction: phone ? "ltr" : "rtl" }}
+                  placeholder="09121234567"
+                  className={`${fieldClass} text-left`}
                 />
               </div>
 
-              <div className="relative flex items-center rounded-2xl border border-slate-200 bg-slate-50/30 shadow-inner transition-all focus-within:border-[#17479E] focus-within:bg-white">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="رمز عبور"
-                  className="h-11 w-full bg-transparent px-4 text-center text-xs font-bold text-slate-700 outline-none placeholder:text-slate-300"
-                  style={{ direction: password ? "ltr" : "rtl" }}
-                />
+              <div>
+                <label htmlFor="password" className="text-xs font-bold text-slate-600">
+                  رمز عبور
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete={isRegister ? "new-password" : "current-password"}
+                    dir="ltr"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    aria-describedby={isRegister ? "password-hint" : undefined}
+                    className={`${fieldClass} pl-14 text-left`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-pressed={showPassword}
+                    className="absolute left-2 top-[calc(50%+3px)] -translate-y-1/2 rounded-lg px-2 py-1.5 text-[11px] font-bold text-brand-700"
+                  >
+                    {showPassword ? "پنهان" : "نمایش"}
+                  </button>
+                </div>
+                {isRegister ? (
+                  <p id="password-hint" className="mt-1.5 text-[11px] text-slate-400">
+                    حداقل ۸ کاراکتر
+                  </p>
+                ) : null}
               </div>
+
+              {message ? (
+                <div
+                  role={isError ? "alert" : "status"}
+                  className={`rounded-2xl border px-4 py-3 text-xs font-bold leading-6 ${
+                    isError
+                      ? "border-red-100 bg-red-50 text-red-700"
+                      : "border-emerald-100 bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  {message}
+                </div>
+              ) : null}
 
               <button
-                type="button"
-                onClick={() => void handleSubmit()}
+                type="submit"
                 disabled={isSubmitting}
-                className="h-12 w-full rounded-2xl bg-gradient-to-r from-[#0E2F6D] via-[#17479E] to-[#2C63C7] text-xs font-black text-white shadow-md transition-all duration-200 hover:shadow-lg active:scale-[0.96] disabled:opacity-60"
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-brand-800 text-sm font-black text-white shadow-float transition-transform active:scale-[0.98] disabled:opacity-60"
               >
                 {isSubmitting
-                  ? "در حال پردازش..."
-                  : mode === "register"
-                    ? "ایجاد حساب کاربری"
-                    : "ورود به اپلیکیشن"}
+                  ? "کمی صبر کنید…"
+                  : isRegister
+                    ? "ساخت حساب"
+                    : "ورود"}
               </button>
-            </div>
+            </form>
 
-            {message ? (
-              <div
-                className={`rounded-2xl border px-4 py-3 text-xs font-bold leading-6 ${
-                  isError
-                    ? "border-red-100 bg-red-50/60 text-red-600"
-                    : "border-green-100 bg-green-50/60 text-green-600"
-                }`}
-              >
-                {message}
-              </div>
-            ) : null}
-
-            <div className="border-t border-slate-50 pt-1 text-center">
-              {mode === "register" ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("login");
-                    resetFeedback();
-                  }}
-                  className="text-xs font-black text-[#17479E] transition-colors hover:text-[#0E2F6D]"
-                >
-                  قبلاً ثبت‌نام کرده‌ام؟ ورود به حساب
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("register");
-                    resetFeedback();
-                  }}
-                  className="text-xs font-black text-[#17479E] transition-colors hover:text-[#0E2F6D]"
-                >
-                  هنوز حساب نداری؟ ثبت‌نام جدید
-                </button>
-              )}
-            </div>
-
-            <Link
-              href="/"
-              className="block text-center text-xs font-black text-slate-400 transition-colors hover:text-slate-600"
+            <button
+              type="button"
+              onClick={() => switchMode(isRegister ? "login" : "register")}
+              className="mt-4 w-full text-center text-xs font-bold text-brand-700"
             >
-              بازگشت به صفحه اصلی
-            </Link>
+              {isRegister
+                ? "حساب دارید؟ وارد شوید"
+                : "حساب ندارید؟ ثبت‌نام کنید"}
+            </button>
           </div>
+
+          <Link
+            href="/"
+            className="mt-5 block text-center text-xs font-bold text-slate-400"
+          >
+            بازگشت به فروشگاه
+          </Link>
         </div>
       </main>
     </MobileShell>

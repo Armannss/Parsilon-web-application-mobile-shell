@@ -1,140 +1,44 @@
 import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
+import {
+  SESSION_COOKIE_NAME,
+  sessionCookieOptions,
+  signSessionToken,
+  verifySessionToken,
+  type SessionUser,
+} from "@/lib/session";
 
-export const SESSION_COOKIE_NAME = "parsilon_session";
-const JWT_SECRET =
-  process.env.JWT_SECRET || "parsilon_super_secret_change_me_123456";
-export type SessionUser = {
-  id: string;
-  fullName: string;
-  phone: string;
-  role: "ADMIN" | "USER";
-};
+export { SESSION_COOKIE_NAME, signSessionToken, sessionCookieOptions };
+export type { SessionUser };
 
-type JwtPayload = {
-  id: string;
-  fullName: string;
-  phone: string;
-  role: "ADMIN" | "USER";
-  iat?: number;
-  exp?: number;
-};
-
-type LegacyAuthCookiePayload = {
-  userId: string;
-  phone: string;
-  role: "ADMIN" | "USER";
-};
+// Compared against when the phone is unknown, so login takes the same time
+// whether or not the account exists.
+const DUMMY_PASSWORD_HASH =
+  "$2b$10$CwTycUXWue0Thq9StjUM0uJ8rj6Yk1e0rQq0bJ0mXGZcQ8v1x7b1G";
 
 export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, 12);
 }
 
-export async function comparePassword(password: string, hash: string) {
-  return bcrypt.compare(password, hash);
+export async function comparePassword(password: string, hash: string | null) {
+  const matches = await bcrypt
+    .compare(password, hash ?? DUMMY_PASSWORD_HASH)
+    .catch(() => false);
+
+  return Boolean(hash) && matches;
 }
 
-export function signSessionToken(user: SessionUser) {
-  return jwt.sign(
-    {
-      id: user.id,
-      fullName: user.fullName,
-      phone: user.phone,
-      role: user.role,
-    },
-    JWT_SECRET,
-    {
-      expiresIn: "7d",
-    }
-  );
-}
-
-export function verifySessionToken(token: string): SessionUser | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-
-    if (
-      !decoded ||
-      typeof decoded.id !== "string" ||
-      typeof decoded.fullName !== "string" ||
-      typeof decoded.phone !== "string" ||
-      (decoded.role !== "ADMIN" && decoded.role !== "USER")
-    ) {
-      return null;
-    }
-
-    return {
-      id: decoded.id,
-      fullName: decoded.fullName,
-      phone: decoded.phone,
-      role: decoded.role,
-    };
-  } catch {
-    return null;
-  }
-}
-
-export async function setSessionCookie(user: SessionUser) {
-  const token = signSessionToken(user);
-  const cookieStore = await cookies();
-
-  cookieStore.set(SESSION_COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-}
-
-// برای سازگاری با کدهای قبلی
-export async function createAuthCookie(payload: LegacyAuthCookiePayload) {
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    select: {
-      id: true,
-      fullName: true,
-      phone: true,
-      role: true,
-      isActive: true,
-    },
-  });
-
-  if (!user || !user.isActive) {
-    throw new Error("User not found or inactive");
-  }
-
-  await setSessionCookie({
-    id: user.id,
-    fullName: user.fullName,
-    phone: user.phone,
-    role: user.role,
-  });
-}
-
-export async function clearSessionCookie() {
-  const cookieStore = await cookies();
-
-  cookieStore.set(SESSION_COOKIE_NAME, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
-}
-
-export async function getCurrentUserFromCookie() {
+export async function getCurrentUserFromCookie(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) return null;
 
-  const session = verifySessionToken(token);
+  const session = await verifySessionToken(token);
   if (!session) return null;
 
+  // Role and active flag always come from the database, never from the token.
   const user = await prisma.user.findUnique({
     where: { id: session.id },
     select: {
@@ -158,26 +62,7 @@ export async function getCurrentUserFromCookie() {
   };
 }
 
-export async function requireUser() {
+export async function getCurrentAdmin(): Promise<SessionUser | null> {
   const user = await getCurrentUserFromCookie();
-
-  if (!user) {
-    throw new Error("UNAUTHORIZED");
-  }
-
-  return user;
-}
-
-export async function requireAdmin() {
-  const user = await getCurrentUserFromCookie();
-
-  if (!user) {
-    throw new Error("UNAUTHORIZED");
-  }
-
-  if (user.role !== "ADMIN") {
-    throw new Error("FORBIDDEN");
-  }
-
-  return user;
+  return user && user.role === "ADMIN" ? user : null;
 }

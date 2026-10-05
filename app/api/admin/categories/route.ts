@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserFromCookie } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/auth";
 
 const categorySchema = z.object({
   name: z.string().min(2, "نام دسته‌بندی الزامی است"),
@@ -27,19 +27,9 @@ function formatCategory(category: {
   };
 }
 
-async function ensureAdmin() {
-  const currentUser = await getCurrentUserFromCookie();
-
-  if (!currentUser || currentUser.role !== "ADMIN") {
-    return null;
-  }
-
-  return currentUser;
-}
-
 export async function GET() {
   try {
-    const admin = await ensureAdmin();
+    const admin = await getCurrentAdmin();
 
     if (!admin) {
       return NextResponse.json(
@@ -68,7 +58,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await ensureAdmin();
+    const admin = await getCurrentAdmin();
 
     if (!admin) {
       return NextResponse.json(

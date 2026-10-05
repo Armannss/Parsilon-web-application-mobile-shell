@@ -1,321 +1,211 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserFromCookie } from "@/lib/auth";
+import {
+  ApiError,
+  fail,
+  handleApiError,
+  tooManyRequests,
+  unauthorized,
+} from "@/lib/api";
+import { formatOrder, generateOrderNumber } from "@/lib/orders";
+import { normalizeIranMobile } from "@/lib/phone";
+import { toEnglishDigits } from "@/lib/format";
+import { computeOrderTotals, MAX_QUANTITY_PER_ITEM } from "@/lib/pricing";
+import { rateLimit } from "@/lib/rate-limit";
 
+// Only identity and quantity are accepted from the client. Names, prices and
+// totals are always read from the database; any such fields in the request
+// body are ignored.
 const createOrderSchema = z.object({
   shippingMethod: z.enum(["NORMAL", "EXPRESS"]),
-  itemCount: z.number().int().min(1),
-  subtotal: z.number().int().min(0),
-  shipping: z.number().int().min(0),
-  vat: z.number().int().min(0),
-  total: z.number().int().min(0),
-
   customer: z.object({
-    fullName: z.string().min(1, "نام گیرنده الزامی است"),
-    phone: z.string().min(1, "شماره تماس الزامی است"),
-    province: z.string().min(1, "استان الزامی است"),
-    city: z.string().min(1, "شهر الزامی است"),
-    address: z.string().min(1, "آدرس الزامی است"),
-    postalCode: z.string().min(1, "کد پستی الزامی است"),
+    fullName: z.string().trim().min(3, "نام گیرنده الزامی است").max(80),
+    phone: z.string().trim().min(1, "شماره تماس الزامی است").max(20),
+    province: z.string().trim().min(2, "استان الزامی است").max(60),
+    city: z.string().trim().min(2, "شهر الزامی است").max(60),
+    address: z.string().trim().min(10, "آدرس را کامل وارد کنید").max(500),
+    postalCode: z.string().trim().min(1, "کد پستی الزامی است").max(20),
   }),
-
   items: z
     .array(
       z.object({
-        productId: z.string().optional(),
-        slug: z.string().min(1),
-        name: z.string().min(1),
-        code: z.string().min(1),
-        image: z.string().optional().default(""),
-        brand: z.string().optional().default(""),
-        category: z.string().optional().default(""),
-        quantity: z.number().int().min(1),
-        unitPrice: z.number().int().min(0),
+        productId: z.string().min(1).nullish(),
+        slug: z.string().min(1).max(200),
+        quantity: z
+          .number()
+          .int()
+          .min(1)
+          .max(MAX_QUANTITY_PER_ITEM, "تعداد انتخاب‌شده بیش از حد مجاز است"),
       })
     )
-    .min(1, "حداقل یک آیتم لازم است"),
+    .min(1, "حداقل یک آیتم لازم است")
+    .max(100, "تعداد اقلام سفارش بیش از حد مجاز است"),
 });
 
-function generateOrderNumber() {
-  const now = new Date();
-  const datePart =
-    now.getFullYear().toString() +
-    String(now.getMonth() + 1).padStart(2, "0") +
-    String(now.getDate()).padStart(2, "0");
-
-  const timePart =
-    String(now.getHours()).padStart(2, "0") +
-    String(now.getMinutes()).padStart(2, "0") +
-    String(now.getSeconds()).padStart(2, "0");
-
-  const randomPart = Math.floor(1000 + Math.random() * 9000);
-
-  return `PP-${datePart}-${timePart}${randomPart}`;
-}
-
-function formatOrder(order: {
-  id: string;
-  orderNumber: string;
-  status: string;
-  shippingMethod: string;
-  itemCount: number;
-  subtotal: number;
-  shipping: number;
-  vat: number;
-  total: number;
-  customerName: string;
-  customerPhone: string;
-  province: string;
-  city: string;
-  address: string;
-  postalCode: string;
-  createdAt: Date;
-  updatedAt: Date;
-  items?: Array<{
-    id: string;
-    quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-    productName: string;
-    productCode: string;
-    productSlug: string;
-    productImage: string | null;
-    brandName: string | null;
-    categoryName: string | null;
-  }>;
-}) {
-  return {
-    id: order.id,
-    orderNumber: order.orderNumber,
-    status: order.status,
-    shippingMethod: order.shippingMethod,
-    itemCount: order.itemCount,
-    subtotal: order.subtotal,
-    shipping: order.shipping,
-    vat: order.vat,
-    total: order.total,
-    customer: {
-      fullName: order.customerName,
-      phone: order.customerPhone,
-      province: order.province,
-      city: order.city,
-      address: order.address,
-      postalCode: order.postalCode,
-    },
-    createdAt: order.createdAt,
-    updatedAt: order.updatedAt,
-    items:
-      order.items?.map((item) => ({
-        id: item.id,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        name: item.productName,
-        code: item.productCode,
-        slug: item.productSlug,
-        image: item.productImage || "",
-        brand: item.brandName || "",
-        category: item.categoryName || "",
-      })) || [],
-  };
-}
-
-async function resolveProductForOrderItem(
-  tx: Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">,
-  item: {
-    productId?: string;
-    slug: string;
-    name: string;
-    quantity: number;
-  }
-) {
-  if (item.productId) {
-    const productById = await tx.product.findUnique({
-      where: { id: item.productId },
-      select: {
-        id: true,
-        slug: true,
-        stock: true,
-        isAvailable: true,
-      },
-    });
-
-    if (productById) {
-      return productById;
-    }
-  }
-
-  const productBySlug = await tx.product.findUnique({
-    where: { slug: item.slug },
-    select: {
-      id: true,
-      slug: true,
-      stock: true,
-      isAvailable: true,
-    },
-  });
-
-  return productBySlug;
-}
+const ORDER_NUMBER_ATTEMPTS = 3;
 
 export async function GET() {
   try {
     const currentUser = await getCurrentUserFromCookie();
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { success: false, message: "ابتدا وارد حساب شوید" },
-        { status: 401 }
-      );
-    }
+    if (!currentUser) return unauthorized();
 
     const orders = await prisma.order.findMany({
-      where: {
-        userId: currentUser.id,
-      },
-      include: {
-        items: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: { userId: currentUser.id },
+      include: { items: true },
+      orderBy: { createdAt: "desc" },
+      take: 200,
     });
 
     return NextResponse.json({
       success: true,
-      orders: orders.map(formatOrder),
+      orders: orders.map((order) => formatOrder(order)),
     });
   } catch (error) {
-    console.error("GET /api/orders error:", error);
-
-    return NextResponse.json(
-      { success: false, message: "خطا در دریافت سفارش‌ها" },
-      { status: 500 }
-    );
+    return handleApiError("GET /api/orders", error, "خطا در دریافت سفارش‌ها");
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromCookie();
+    if (!currentUser) return unauthorized();
 
-    if (!currentUser) {
-      return NextResponse.json(
-        { success: false, message: "ابتدا وارد حساب شوید" },
-        { status: 401 }
-      );
-    }
+    const limit = rateLimit(`order:${currentUser.id}`, 10, 10 * 60 * 1000);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfterSeconds);
 
-    const body = await request.json();
-    const parsed = createOrderSchema.safeParse(body);
+    const parsed = createOrderSchema.safeParse(
+      await request.json().catch(() => null)
+    );
 
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            parsed.error.issues[0]?.message || "اطلاعات سفارش نامعتبر است",
-        },
-        { status: 400 }
+      return fail(
+        400,
+        parsed.error.issues[0]?.message || "اطلاعات سفارش نامعتبر است"
       );
     }
 
-    const data = parsed.data;
-    const orderNumber = generateOrderNumber();
+    const { shippingMethod, customer } = parsed.data;
 
-    const createdOrder = await prisma.$transaction(async (tx) => {
-      const resolvedProducts: Array<{
-        id: string;
-        slug: string;
-        stock: number;
-        isAvailable: boolean;
-        requestItem: (typeof data.items)[number];
-      }> = [];
+    const customerPhone = normalizeIranMobile(customer.phone);
+    if (!customerPhone) return fail(400, "شماره تماس گیرنده معتبر نیست");
 
-      for (const item of data.items) {
-        const product = await resolveProductForOrderItem(tx, item);
+    const postalCode = toEnglishDigits(customer.postalCode).replace(/\D/g, "");
+    if (postalCode.length !== 10) return fail(400, "کد پستی باید ۱۰ رقم باشد");
 
-        if (!product || !product.isAvailable) {
-          throw new Error(`محصول ${item.name} موجود نیست`);
-        }
+    // The same product sent twice counts as one line.
+    const quantityBySlug = new Map<string, number>();
+    for (const item of parsed.data.items) {
+      quantityBySlug.set(
+        item.slug,
+        (quantityBySlug.get(item.slug) ?? 0) + item.quantity
+      );
+    }
 
-        if (product.stock < item.quantity) {
-          throw new Error(`موجودی محصول ${item.name} کافی نیست`);
-        }
-
-        resolvedProducts.push({
-          ...product,
-          requestItem: item,
-        });
+    for (const quantity of quantityBySlug.values()) {
+      if (quantity > MAX_QUANTITY_PER_ITEM) {
+        return fail(400, "تعداد انتخاب‌شده بیش از حد مجاز است");
       }
+    }
 
-      const order = await tx.order.create({
-        data: {
-          orderNumber,
-          status: "PENDING_REVIEW",
-          shippingMethod: data.shippingMethod,
-          itemCount: data.itemCount,
-          subtotal: data.subtotal,
-          shipping: data.shipping,
-          vat: data.vat,
-          total: data.total,
-          customerName: data.customer.fullName,
-          customerPhone: data.customer.phone,
-          province: data.customer.province,
-          city: data.customer.city,
-          address: data.customer.address,
-          postalCode: data.customer.postalCode,
-          userId: currentUser.id,
-          items: {
-            create: resolvedProducts.map(({ id, slug, requestItem }) => ({
-              productId: id,
-              quantity: requestItem.quantity,
-              unitPrice: requestItem.unitPrice,
-              totalPrice: requestItem.unitPrice * requestItem.quantity,
-              productName: requestItem.name,
-              productCode: requestItem.code,
-              productSlug: slug,
-              productImage: requestItem.image || "",
-              brandName: requestItem.brand || "",
-              categoryName: requestItem.category || "",
-            })),
+    const createOrder = (orderNumber: string) =>
+      prisma.$transaction(async (tx) => {
+        const products = await tx.product.findMany({
+          where: { slug: { in: [...quantityBySlug.keys()] } },
+          include: {
+            brand: { select: { name: true } },
+            category: { select: { name: true } },
           },
-        },
-        include: {
-          items: true,
-        },
-      });
+        });
 
-      for (const item of resolvedProducts) {
-        await tx.product.update({
-          where: { id: item.id },
+        const productBySlug = new Map(products.map((p) => [p.slug, p]));
+
+        const lines = [...quantityBySlug].map(([slug, quantity]) => {
+          const product = productBySlug.get(slug);
+
+          if (!product || !product.isAvailable || product.price <= 0) {
+            throw new ApiError(
+              409,
+              `محصول «${product?.name ?? slug}» در حال حاضر قابل سفارش نیست`
+            );
+          }
+
+          return { product, quantity, unitPrice: product.price };
+        });
+
+        // Decrement only if enough stock is still there. Checking and
+        // decrementing in one statement is what prevents overselling when two
+        // orders race for the last items.
+        for (const line of lines) {
+          const { count } = await tx.product.updateMany({
+            where: { id: line.product.id, stock: { gte: line.quantity } },
+            data: { stock: { decrement: line.quantity } },
+          });
+
+          if (count !== 1) {
+            throw new ApiError(
+              409,
+              `موجودی محصول «${line.product.name}» کافی نیست`
+            );
+          }
+        }
+
+        const totals = computeOrderTotals(lines, shippingMethod);
+
+        return tx.order.create({
           data: {
-            stock: {
-              decrement: item.requestItem.quantity,
+            orderNumber,
+            status: "PENDING_REVIEW",
+            shippingMethod,
+            ...totals,
+            customerName: customer.fullName,
+            customerPhone,
+            province: customer.province,
+            city: customer.city,
+            address: customer.address,
+            postalCode,
+            userId: currentUser.id,
+            items: {
+              create: lines.map(({ product, quantity, unitPrice }) => ({
+                productId: product.id,
+                quantity,
+                unitPrice,
+                totalPrice: unitPrice * quantity,
+                productName: product.name,
+                productCode: product.code,
+                productSlug: product.slug,
+                productImage: product.image || "",
+                brandName: product.brand?.name || "",
+                categoryName: product.category?.name || "",
+              })),
             },
           },
+          include: { items: true },
         });
+      });
+
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        const order = await createOrder(generateOrderNumber());
+
+        return NextResponse.json({
+          success: true,
+          message: "سفارش با موفقیت ثبت شد",
+          order: formatOrder(order),
+        });
+      } catch (error) {
+        const isOrderNumberCollision =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002";
+
+        if (!isOrderNumberCollision || attempt >= ORDER_NUMBER_ATTEMPTS) {
+          throw error;
+        }
       }
-
-      return order;
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: "سفارش با موفقیت ثبت شد",
-      order: formatOrder(createdOrder),
-    });
+    }
   } catch (error) {
-    console.error("POST /api/orders error:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          error instanceof Error ? error.message : "خطا در ثبت سفارش",
-      },
-      { status: 500 }
-    );
+    return handleApiError("POST /api/orders", error, "خطا در ثبت سفارش");
   }
 }

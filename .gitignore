@@ -7,3 +7,6 @@ out/
 .env.development
 *.log
 .DS_Store
+
+!.env.example
+tsconfig.tsbuildinfo
