@@ -16,6 +16,13 @@ wheel bearings, brake cylinders and pulleys), with an admin panel.
 - Wholesale request form
 - Installable on a phone's home screen (PWA)
 
+**AI parts assistant** (`/assistant`)
+
+- A chat agent that finds the right part for a customer's car
+- Built on the Claude API with tool use: it searches the live catalogue,
+  checks price and stock, and shows the matching parts as cards
+- It reads the catalogue only; it cannot place orders or see accounts
+
 **Admin panel**
 
 - Products, brands and categories
@@ -26,7 +33,7 @@ wheel bearings, brake cylinders and pulleys), with an admin panel.
 ## Tech stack
 
 Next.js 15 (App Router), React 19, TypeScript, Prisma 7, PostgreSQL,
-Tailwind CSS.
+Tailwind CSS, Anthropic SDK (Claude) for the assistant.
 
 ## Getting started
 
@@ -42,6 +49,9 @@ npm run dev                 # http://localhost:3000
 `JWT_SECRET` must be at least 32 random characters. Generate one with
 `openssl rand -base64 48`. The app refuses to create sessions with a missing
 or weak secret.
+
+The assistant needs `ANTHROPIC_API_KEY` in `.env`. Without it, the assistant
+page says it is not set up and the rest of the shop works normally.
 
 To load demo data (never in production):
 
@@ -71,6 +81,7 @@ SEED_PASSWORD='choose-a-password' npm run db:seed
 | `components/` | Shared UI components |
 | `context/` | Auth, cart and order state |
 | `lib/` | Pricing, sessions, validation and data access |
+| `lib/assistant/` | The assistant's tools and system prompt |
 | `prisma/` | Database schema, migrations and seed scripts |
 | `public/images/` | Product photos and brand assets |
 

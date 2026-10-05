@@ -19,6 +19,8 @@ export type ProductQuery = {
   category?: string;
   sort?: ProductSort;
   slugs?: string[];
+  /** Exact compatible car name, e.g. "پراید". */
+  car?: string;
   /** Hide products that cannot be ordered right now. */
   availableOnly?: boolean;
   /** Only products worth showcasing: orderable and with a real photo. */
@@ -58,9 +60,10 @@ export function formatPublicProduct(product: ProductWithRelations, index = 0) {
 export type PublicProductPayload = ReturnType<typeof formatPublicProduct>;
 
 function buildWhere(query: ProductQuery): Prisma.ProductWhereInput {
-  const { search, brand, category, slugs, showcase, availableOnly } = query;
+  const { search, brand, category, slugs, showcase, availableOnly, car } = query;
 
   return {
+    ...(car ? { compatibleCars: { has: car } } : {}),
     ...(availableOnly ? { isAvailable: true, stock: { gt: 0 } } : {}),
     ...(showcase
       ? {
