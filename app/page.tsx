@@ -177,6 +177,31 @@ export default async function HomePage() {
           </section>
         ) : null}
 
+        {/* Parts assistant */}
+        <section className="px-4 pt-4">
+          <Link
+            href="/assistant"
+            className="flex items-center gap-3 rounded-3xl border border-brand-100 bg-white p-4 shadow-card transition-transform active:scale-[0.98]"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-800 text-white">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+              </svg>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-black text-slate-900">
+                نمی‌دانید کدام قطعه؟ بپرسید
+              </span>
+              <span className="mt-0.5 block text-[11px] text-slate-500">
+                دستیار هوشمند، قطعه مناسب خودروتان را پیدا می‌کند
+              </span>
+            </span>
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-slate-300" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 6l-6 6 6 6" />
+            </svg>
+          </Link>
+        </section>
+
         {/* What we make */}
         {productLines.length > 0 ? (
           <Reveal>
