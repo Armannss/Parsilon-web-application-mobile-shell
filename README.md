@@ -5,6 +5,12 @@ wheel bearings, brake cylinders and pulleys), with an admin panel.
 
 **Created by Arman Naseri Far.**
 
+## Screenshots
+
+| Home | Products | Product page | AI assistant |
+| --- | --- | --- | --- |
+| <img src="docs/screenshots/home.png" width="200" alt="Home page"> | <img src="docs/screenshots/products.png" width="200" alt="Product list with filters"> | <img src="docs/screenshots/product.png" width="200" alt="Product page"> | <img src="docs/screenshots/assistant.png" width="200" alt="The assistant recommending a brake disc"> |
+
 ## Features
 
 **Shop**
