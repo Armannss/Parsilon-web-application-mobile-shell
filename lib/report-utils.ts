@@ -63,7 +63,11 @@ function startOfToday(date: Date) {
 function parseLocalDateInput(value?: string, endOfDay = false) {
   if (!value) return null;
 
-  const date = new Date(value);
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!parts) return null;
+  const [, year, month, day] = parts.map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
   if (Number.isNaN(date.getTime())) return null;
 
   if (endOfDay) {
