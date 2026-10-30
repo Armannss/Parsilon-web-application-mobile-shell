@@ -80,6 +80,7 @@ function parsePrice(price?: string) {
 
   const englishDigits = price
     .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
+    .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString())
     .replace(/[^\d]/g, "");
 
   return Number(englishDigits || 0);
