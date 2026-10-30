@@ -26,9 +26,8 @@ function parseStockValue(stock: unknown) {
   }
 
   if (typeof stock === "string") {
+    if (stock.includes("ناموجود") || stock.includes("استعلام")) return 0;
     if (stock.includes("موجود")) return 10;
-    if (stock.includes("استعلام")) return 0;
-    if (stock.includes("ناموجود")) return 0;
 
     const englishDigits = stock
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
@@ -152,7 +151,7 @@ export function resolveCartItems(
     const stockValue = parseStockValue(product?.stock);
     const isUnavailable = !product
       ? true
-      : product.isAvailable === false || stockValue <= 0;
+      : product.isAvailable === false || stockValue <= 0 || stockValue < item.quantity;
 
     return {
       slug: item.slug,
